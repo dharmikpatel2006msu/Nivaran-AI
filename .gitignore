@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment and sensitive credential files
+.env
+.env.*
+!.env.example
+Importantant.txt
+
+# Local data & logs
+postgres_data/
+*.log
+scratch/
+
+# OS metadata
+.DS_Store
+Thumbs.db
