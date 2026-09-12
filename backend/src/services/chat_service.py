@@ -104,6 +104,24 @@ def format_history_for_prompt(history: List[Dict[str, Any]]) -> str:
     return "\n".join(formatted_lines)
 
 
+def count_unresolved_turns(history: List[Dict[str, Any]]) -> int:
+    """Calculates consecutive unresolved or low-confidence turns from recent history."""
+    unresolved_indicators = [
+        "escalat", "human support", "apologize", "unable to find",
+        "don't have information", "not enough information", "representative", "ticket #"
+    ]
+    count = 0
+    # Traverse from most recent messages backwards
+    for msg in reversed(history):
+        if msg.get("role") == "assistant":
+            content = msg.get("content", "").lower()
+            if any(ind in content for ind in unresolved_indicators):
+                count += 1
+            else:
+                break
+    return count
+
+
 def process_incoming_message(telegram_id: int, user_display_name: str, message_text: str) -> str:
     """End-to-end orchestration pipeline for an incoming user message.
 
@@ -112,7 +130,7 @@ def process_incoming_message(telegram_id: int, user_display_name: str, message_t
     2. Fetch last `CHAT_HISTORY_WINDOW` messages for conversational context.
     3. Generate embedding & query pgvector for matching knowledge chunks.
     4. Generate candidate reply using Groq LLM with context & history.
-    5. Evaluate escalation triggers (red flags, low confidence, chunk tags).
+    5. Evaluate escalation triggers (red flags, low confidence, chunk tags, unresolved count).
     6. Log user message and assistant reply to `chat_history`.
     7. If escalated, create a row in `tickets` table and append human support notice.
 
@@ -128,6 +146,7 @@ def process_incoming_message(telegram_id: int, user_display_name: str, message_t
     # Step 2: Fetch short-term history window (last CHAT_HISTORY_WINDOW messages)
     history_records = fetch_recent_history(user_id, limit=CHAT_HISTORY_WINDOW)
     formatted_history = format_history_for_prompt(history_records)
+    recent_unresolved = count_unresolved_turns(history_records)
 
     # Log incoming user message
     log_chat_message(user_id, "user", message_text)
@@ -143,7 +162,7 @@ def process_incoming_message(telegram_id: int, user_display_name: str, message_t
         user_message=message_text,
         max_similarity=max_similarity,
         context_documents=docs,
-        recent_unresolved_count=0
+        recent_unresolved_count=recent_unresolved
     )
 
     final_reply = ai_reply

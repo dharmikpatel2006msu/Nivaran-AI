@@ -4,12 +4,20 @@ Wires REST Admin endpoints, database connection initialization,
 and Telegram Bot polling background service lifecycle.
 """
 
+import os
+import sys
 import logging
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from src.config import PORT, HOST, TELEGRAM_BOT_TOKEN
+from telegram import Update
+from src.config import PORT, HOST, TELEGRAM_BOT_TOKEN, TELEGRAM_MODE, WEBHOOK_URL
 from src.api.admin_routes import router as admin_router
 from src.integrations.telegram_client import setup_telegram_application
 
@@ -29,17 +37,22 @@ async def lifespan(app: FastAPI):
     logger.info("⚡ Nivaran AI Backend initializing...")
     global telegram_app
 
-    # Start Telegram Bot Polling in background if token is configured
     if TELEGRAM_BOT_TOKEN:
         try:
             telegram_app = setup_telegram_application()
             if telegram_app:
                 await telegram_app.initialize()
                 await telegram_app.start()
-                await telegram_app.updater.start_polling()
-                logger.info("🚀 Telegram Bot polling service running.")
+
+                if TELEGRAM_MODE == "polling":
+                    await telegram_app.updater.start_polling()
+                    logger.info("🚀 Telegram Bot running in polling mode.")
+                elif TELEGRAM_MODE == "webhook" and WEBHOOK_URL:
+                    webhook_endpoint = f"{WEBHOOK_URL.rstrip('/')}/api/telegram/webhook"
+                    await telegram_app.bot.set_webhook(url=webhook_endpoint)
+                    logger.info(f"🚀 Telegram Bot running in webhook mode at {webhook_endpoint}")
         except Exception as e:
-            logger.error(f"❌ Failed to start Telegram Bot polling: {e}")
+            logger.error(f"❌ Failed to start Telegram Bot: {e}")
     else:
         logger.warning("⚠️ Running in REST API mode only (TELEGRAM_BOT_TOKEN not provided).")
 
@@ -47,11 +60,12 @@ async def lifespan(app: FastAPI):
 
     # Shutdown hooks
     logger.info("🛑 Nivaran AI Backend shutting down...")
-    if telegram_app and telegram_app.updater and telegram_app.updater.running:
-        await telegram_app.updater.stop()
+    if telegram_app:
+        if telegram_app.updater and telegram_app.updater.running:
+            await telegram_app.updater.stop()
         await telegram_app.stop()
         await telegram_app.shutdown()
-        logger.info("👋 Telegram Bot polling stopped.")
+        logger.info("👋 Telegram Bot stopped.")
 
 
 app = FastAPI(
@@ -89,6 +103,21 @@ async def root():
 async def health_check():
     """Health check endpoint for monitoring."""
     return {"status": "healthy"}
+
+
+@app.post("/api/telegram/webhook", tags=["Telegram Webhook"])
+async def telegram_webhook(request: Request):
+    """Processes incoming Telegram updates in webhook mode."""
+    if not telegram_app:
+        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+    try:
+        data = await request.json()
+        update = Update.de_json(data, telegram_app.bot)
+        await telegram_app.process_update(update)
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error handling webhook update: {e}")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
 
 if __name__ == "__main__":

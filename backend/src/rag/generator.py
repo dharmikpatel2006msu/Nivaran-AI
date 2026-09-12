@@ -63,14 +63,14 @@ def generate_llm_response(
                 {"role": "user", "content": user_message},
             ],
             model=LLM_MODEL,
-            max_tokens=400,
+            max_tokens=450,
             temperature=0.2,
         )
 
         response_content = completion.choices[0].message.content or ""
         
-        # Remove any internal reasoning thinking blocks output by qwen models
-        cleaned_response = re.sub(r"<think>[\s\S]*?<\/think>", "", response_content, flags=re.IGNORECASE).strip()
+        # Remove any internal reasoning thinking blocks output by qwen/reasoning models
+        cleaned_response = re.sub(r"<think>[\s\S]*?(?:<\/think>|$)", "", response_content, flags=re.IGNORECASE).strip()
         logger.info(f"💡 Generated response: '{cleaned_response[:80]}...'")
         return cleaned_response
 

@@ -7,7 +7,8 @@ and dashboard statistics. Unblocks frontend development with schema-compliant en
 import logging
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query, Path, status
+from fastapi import APIRouter, HTTPException, Query, Path, Header, Depends, status
+from src.config import ADMIN_API_KEY
 from src.db.models import (
     Ticket,
     TicketStatus,
@@ -22,7 +23,24 @@ from src.db.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin", tags=["Admin Panel"])
+
+def verify_admin_key(x_admin_api_key: Optional[str] = Header(None, alias="X-Admin-API-Key")) -> bool:
+    """Validates the admin API key if configured in the environment."""
+    if not ADMIN_API_KEY:
+        return True  # Open access in local development if no key configured
+    if x_admin_api_key != ADMIN_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-Admin-API-Key header"
+        )
+    return True
+
+
+router = APIRouter(
+    prefix="/api/admin",
+    tags=["Admin Panel"],
+    dependencies=[Depends(verify_admin_key)]
+)
 
 # --- Mock Data Fallbacks for Frontend Unblocking ---
 MOCK_USERS = [

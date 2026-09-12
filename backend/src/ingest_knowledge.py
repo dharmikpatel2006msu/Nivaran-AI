@@ -6,10 +6,17 @@ generates Gemini vector embeddings, and seeds/upserts into Supabase pgvector `do
 """
 
 import os
+import sys
 import re
 import glob
 import logging
 from typing import List, Dict, Any
+
+# Ensure backend directory is in sys.path
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from src.rag.retriever import generate_embedding
 from src.db.supabase_client import get_supabase_client
 
@@ -88,8 +95,12 @@ def parse_markdown_file(file_path: str) -> List[Dict[str, Any]]:
     return chunks
 
 
-def ingest_all_knowledge_files():
-    """Main execution loop to ingest all markdown files in backend/knowledge/."""
+def ingest_all_knowledge_files(clean: bool = False):
+    """Main execution loop to ingest all markdown files in backend/knowledge/.
+    
+    Args:
+        clean: If True, clears the documentation table before ingesting.
+    """
     logger.info(f"📂 Scanning Knowledge Base directory: {KNOWLEDGE_DIR}")
     md_files = glob.glob(os.path.join(KNOWLEDGE_DIR, "*.md"))
 
@@ -98,10 +109,29 @@ def ingest_all_knowledge_files():
         return
 
     supabase = get_supabase_client()
+    
+    if clean:
+        logger.info("🧹 Cleaning existing documentation table before ingestion...")
+        try:
+            # Delete existing rows
+            supabase.table("documentation").delete().neq("id", 0).execute()
+            logger.info("✅ Existing documentation cleared.")
+        except Exception as e:
+            logger.warning(f"Could not clear documentation table: {e}")
+
     total_ingested = 0
 
     for file_path in md_files:
-        logger.info(f"📄 Processing file: {os.path.basename(file_path)}...")
+        file_basename = os.path.basename(file_path)
+        logger.info(f"📄 Processing file: {file_basename}...")
+        
+        # Deduplication: remove existing records for this file if not full clean
+        if not clean:
+            try:
+                supabase.table("documentation").delete().filter("metadata->>file", "eq", file_basename).execute()
+            except Exception as e:
+                logger.debug(f"Pre-cleanup notice for {file_basename}: {e}")
+
         chunks = parse_markdown_file(file_path)
 
         for chunk in chunks:
@@ -128,4 +158,8 @@ def ingest_all_knowledge_files():
 
 
 if __name__ == "__main__":
-    ingest_all_knowledge_files()
+    import argparse
+    parser = argparse.ArgumentParser(description="Ingest markdown knowledge base into pgvector.")
+    parser.add_argument("--clean", action="store_true", help="Clear documentation table before ingestion")
+    args = parser.parse_args()
+    ingest_all_knowledge_files(clean=args.clean)

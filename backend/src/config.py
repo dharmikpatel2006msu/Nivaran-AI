@@ -14,6 +14,9 @@ HOST = os.getenv("HOST", "0.0.0.0")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
+TELEGRAM_MODE = os.getenv("TELEGRAM_MODE", "polling").lower()  # "polling" or "webhook"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 
 # --- Database & Supabase Config ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
