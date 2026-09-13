@@ -16,6 +16,23 @@ from src.db.models import TicketStatus
 logger = logging.getLogger(__name__)
 
 
+GREETINGS_LIST = {
+    "hi", "hii", "hiii", "hello", "hey", "heyy", "start", "/start",
+    "help", "good morning", "good afternoon", "good evening", "namaste", "hola", "howdy"
+}
+
+
+def is_simple_greeting(message: str) -> bool:
+    """Checks if a user message is a simple greeting or conversation opener."""
+    cleaned = "".join(c for c in message.lower() if c.isalnum() or c.isspace()).strip()
+    words = cleaned.split()
+    if cleaned in GREETINGS_LIST:
+        return True
+    if len(words) <= 2 and any(w in GREETINGS_LIST for w in words):
+        return True
+    return False
+
+
 def evaluate_escalation_triggers(
     user_message: str,
     max_similarity: float,
@@ -27,7 +44,7 @@ def evaluate_escalation_triggers(
     Triggers:
     1. Knowledge chunk metadata tagged `escalate: True`.
     2. Red-flag keyword matches in user query.
-    3. Low similarity confidence score (below threshold).
+    3. Low similarity confidence score (below threshold, excluding greetings).
     4. Repeated unresolved queries.
 
     Returns:
@@ -50,11 +67,12 @@ def evaluate_escalation_triggers(
             logger.info(f"🚩 Escalation triggered: {reason}")
             return True, reason
 
-    # 3. Low Confidence / Knowledge Gap Trigger
-    if max_similarity < LOW_CONFIDENCE_THRESHOLD:
-        reason = f"Low knowledge retrieval confidence score ({max_similarity:.4f} < {LOW_CONFIDENCE_THRESHOLD})"
-        logger.info(f"🚩 Escalation triggered: {reason}")
-        return True, reason
+    # 3. Low Confidence / Knowledge Gap Trigger (Skipped for greetings)
+    if not is_simple_greeting(user_message):
+        if max_similarity < LOW_CONFIDENCE_THRESHOLD:
+            reason = f"Low knowledge retrieval confidence score ({max_similarity:.4f} < {LOW_CONFIDENCE_THRESHOLD})"
+            logger.info(f"🚩 Escalation triggered: {reason}")
+            return True, reason
 
     # 4. Repeated Unresolved Query Trigger
     if recent_unresolved_count >= REPEATED_UNRESOLVED_THRESHOLD:

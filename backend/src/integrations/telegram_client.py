@@ -57,19 +57,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info(f"\n📩 Incoming Telegram message from {display_name} ({telegram_id}): '{incoming_msg}'")
 
     try:
-        # Run chat service pipeline synchronously/async
+        # Show typing status in Telegram chat
+        if update.effective_chat:
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+        # Run chat service pipeline asynchronously in threadpool
         reply_text = await asyncio.to_thread(
             process_incoming_message,
             telegram_id,
             display_name,
             incoming_msg
         )
+
+        if not reply_text or not reply_text.strip():
+            reply_text = (
+                "Hello! I'm here to help you with any questions about ShopNest orders, "
+                "shipping options, return policies, or store hours. How can I assist you?"
+            )
+
         logger.info(f"📤 Sending Telegram reply to {display_name}...")
         await update.message.reply_text(reply_text)
         logger.info("✅ Telegram reply sent successfully.")
     except Exception as e:
-        logger.error(f"❌ Error handling Telegram message: {e}")
-        await update.message.reply_text("An error occurred while processing your request. Please try again.")
+        logger.error(f"❌ Error handling Telegram message: {e}", exc_info=True)
+        await update.message.reply_text(
+            "I apologize, but I'm having trouble processing that request right now. "
+            "Please try asking again, or let me know if you need help with returns, shipping, or order tracking."
+        )
 
 
 def setup_telegram_application() -> Optional[Application]:

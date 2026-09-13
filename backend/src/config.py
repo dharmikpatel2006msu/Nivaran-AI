@@ -26,7 +26,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 # --- RAG & AI Model Configuration ---
 EMBEDDING_MODEL = "gemini-embedding-001"
 EMBEDDING_DIM = 768
-LLM_MODEL = "qwen/qwen3.6-27b"
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 
 # --- Conversational Memory Window ---
 # Configurable window size for fetching previous messages for short-term chat context

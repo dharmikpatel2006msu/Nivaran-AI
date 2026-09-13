@@ -26,10 +26,10 @@ def get_or_create_user(telegram_id: int, name: str) -> Dict[str, Any]:
     Returns:
         User record dictionary.
     """
-    supabase = get_supabase_client()
     now_iso = datetime.utcnow().isoformat()
 
     try:
+        supabase = get_supabase_client()
         # Check existing user
         response = supabase.table("users").select("*").eq("telegram_id", telegram_id).execute()
         if response.data and len(response.data) > 0:
@@ -46,7 +46,9 @@ def get_or_create_user(telegram_id: int, name: str) -> Dict[str, Any]:
             "last_active_at": now_iso
         }
         create_res = supabase.table("users").insert(new_user_data).execute()
-        return create_res.data[0]
+        if create_res.data and len(create_res.data) > 0:
+            return create_res.data[0]
+        return {"id": 0, "telegram_id": telegram_id, "name": name}
     except Exception as e:
         logger.error(f"Error upserting user telegram_id={telegram_id}: {e}")
         return {"id": 0, "telegram_id": telegram_id, "name": name}
@@ -139,48 +141,56 @@ def process_incoming_message(telegram_id: int, user_display_name: str, message_t
     """
     logger.info(f"📩 Processing message from user '{user_display_name}' ({telegram_id}): '{message_text[:50]}...'")
 
-    # Step 1: User resolution
-    user = get_or_create_user(telegram_id, user_display_name)
-    user_id = user.get("id", 0)
+    try:
+        # Step 1: User resolution
+        user = get_or_create_user(telegram_id, user_display_name)
+        user_id = user.get("id", 0)
 
-    # Step 2: Fetch short-term history window (last CHAT_HISTORY_WINDOW messages)
-    history_records = fetch_recent_history(user_id, limit=CHAT_HISTORY_WINDOW)
-    formatted_history = format_history_for_prompt(history_records)
-    recent_unresolved = count_unresolved_turns(history_records)
+        # Step 2: Fetch short-term history window (last CHAT_HISTORY_WINDOW messages)
+        history_records = fetch_recent_history(user_id, limit=CHAT_HISTORY_WINDOW)
+        formatted_history = format_history_for_prompt(history_records)
+        recent_unresolved = count_unresolved_turns(history_records)
 
-    # Log incoming user message
-    log_chat_message(user_id, "user", message_text)
+        # Log incoming user message
+        log_chat_message(user_id, "user", message_text)
 
-    # Step 3: RAG Retrieval
-    docs, max_similarity = retrieve_context(message_text, match_threshold=SIMILARITY_THRESHOLD, match_count=3)
+        # Step 3: RAG Retrieval
+        docs, max_similarity = retrieve_context(message_text, match_threshold=SIMILARITY_THRESHOLD, match_count=3)
 
-    # Step 4: LLM Reply Generation
-    ai_reply = generate_llm_response(message_text, docs, formatted_history)
+        # Step 4: LLM Reply Generation
+        ai_reply = generate_llm_response(message_text, docs, formatted_history)
 
-    # Step 5: Escalation Evaluation
-    should_escalate, escalation_reason = evaluate_escalation_triggers(
-        user_message=message_text,
-        max_similarity=max_similarity,
-        context_documents=docs,
-        recent_unresolved_count=recent_unresolved
-    )
-
-    final_reply = ai_reply
-
-    # Step 6: Handle Escalation Action
-    if should_escalate:
-        logger.info(f"⚠️ Message triggered escalation. Reason: {escalation_reason}")
-        created_ticket = create_in_house_ticket(user_id, escalation_reason)
-
-        ticket_id = created_ticket.get("id") if created_ticket else "N/A"
-        escalation_notice = (
-            f"\n\n--- Support Ticket #{ticket_id} Created ---\n"
-            "Your request has been logged with our customer support team. "
-            "A representative will review your issue shortly."
+        # Step 5: Escalation Evaluation
+        should_escalate, escalation_reason = evaluate_escalation_triggers(
+            user_message=message_text,
+            max_similarity=max_similarity,
+            context_documents=docs,
+            recent_unresolved_count=recent_unresolved
         )
-        final_reply += escalation_notice
 
-    # Log assistant response
-    log_chat_message(user_id, "assistant", final_reply)
+        final_reply = ai_reply
 
-    return final_reply
+        # Step 6: Handle Escalation Action
+        if should_escalate:
+            logger.info(f"⚠️ Message triggered escalation. Reason: {escalation_reason}")
+            created_ticket = create_in_house_ticket(user_id, escalation_reason)
+
+            ticket_id = created_ticket.get("id") if created_ticket else "N/A"
+            escalation_notice = (
+                f"\n\n--- Support Ticket #{ticket_id} Created ---\n"
+                "Your request has been logged with our customer support team. "
+                "A representative will review your issue shortly."
+            )
+            final_reply += escalation_notice
+
+        # Log assistant response
+        log_chat_message(user_id, "assistant", final_reply)
+
+        return final_reply
+    except Exception as e:
+        logger.error(f"❌ Unhandled error in process_incoming_message: {e}", exc_info=True)
+        return (
+            "Hello! I am Nivaran AI, your ShopNest customer support assistant.\n\n"
+            "I can help you with store questions, order tracking, shipping options, and returns. "
+            "How may I assist you today?"
+        )
