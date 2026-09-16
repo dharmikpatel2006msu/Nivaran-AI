@@ -10,7 +10,8 @@ from typing import Optional
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from src.config import TELEGRAM_BOT_TOKEN
-from src.services.chat_service import process_incoming_message
+from src.services.chat_service import process_incoming_message, get_or_create_user
+from src.db.supabase_client import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
@@ -18,21 +19,54 @@ _telegram_app: Optional[Application] = None
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handler for Telegram /start command.
+    """Handler for Telegram /start command with deep-link order tracking support."""
+    if not update.message:
+        return
 
-    Ported from `index.js` lines 50-54:
-    ```js
-    bot.command('start', (ctx) => {
-        ctx.reply("👋 Hello! I am Nivaran AI Support Assistant...");
-    });
-    ```
-    """
+    user = update.effective_user
+    telegram_id = user.id if user else 0
+    display_name = user.full_name if user else "User"
+
+    # Check for deep-linking payload (e.g., /start ORD-12345)
+    if context.args and len(context.args) > 0:
+        payload = context.args[0].strip()
+        if payload.startswith("ORD-"):
+            order_id = payload
+            logger.info(f"🔗 Processing Telegram deep link for order '{order_id}' by user {display_name} ({telegram_id})")
+
+            # Ensure user record exists in Supabase users table
+            get_or_create_user(telegram_id, display_name)
+
+            product_name = "your purchased item"
+            try:
+                supabase = get_supabase_client()
+                # Update user_id on orders table
+                supabase.table("orders").update({"user_id": telegram_id}).eq("id", order_id).execute()
+
+                # Fetch product details for confirmation message
+                order_res = supabase.table("orders").select("id, status, products(name)").eq("id", order_id).execute()
+                if order_res.data and len(order_res.data) > 0:
+                    item_data = order_res.data[0]
+                    p_info = item_data.get("products") or {}
+                    product_name = p_info.get("name", product_name)
+            except Exception as e:
+                logger.error(f"❌ Error linking order '{order_id}' to user {telegram_id}: {e}")
+
+            link_success_text = (
+                f"🎉 **Order Linked Successfully!**\n\n"
+                f"Hi {display_name}, your order **#{order_id}** ({product_name}) has been linked to your Telegram account!\n\n"
+                f"📦 **Current Status:** `Processing`\n\n"
+                f"You can ask me anytime about your order status, shipping updates, or return policies!"
+            )
+            await update.message.reply_text(link_success_text, parse_mode="Markdown")
+            return
+
+    # Standard fallback welcome message
     welcome_text = (
-        "👋 Hello! I am Nivaran AI Support Assistant.\n\n"
+        f"👋 Hello {display_name}! I am Nivaran AI Support Assistant.\n\n"
         "Ask me any question about our services, store hours, returns, or order tracking!"
     )
-    if update.message:
-        await update.message.reply_text(welcome_text)
+    await update.message.reply_text(welcome_text)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

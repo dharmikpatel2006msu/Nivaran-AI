@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Tuple, List, Dict, Any
 from src.config import CHAT_HISTORY_WINDOW, SIMILARITY_THRESHOLD
 from src.db.supabase_client import get_supabase_client
-from src.rag.retriever import retrieve_context
+from src.rag.retriever import retrieve_context, get_user_active_orders
 from src.rag.generator import generate_llm_response
 from src.services.escalation_service import evaluate_escalation_triggers, create_in_house_ticket
 
@@ -124,21 +124,35 @@ def count_unresolved_turns(history: List[Dict[str, Any]]) -> int:
     return count
 
 
-def process_incoming_message(telegram_id: int, user_display_name: str, message_text: str) -> str:
-    """End-to-end orchestration pipeline for an incoming user message.
+def validate_order_ownership(telegram_id: int, order_id: str) -> bool:
+    """Checks if an order_id exists in Supabase orders table and is linked to user's telegram_id.
 
-    Workflow:
-    1. Upsert user record in `users` table.
-    2. Fetch last `CHAT_HISTORY_WINDOW` messages for conversational context.
-    3. Generate embedding & query pgvector for matching knowledge chunks.
-    4. Generate candidate reply using Groq LLM with context & history.
-    5. Evaluate escalation triggers (red flags, low confidence, chunk tags, unresolved count).
-    6. Log user message and assistant reply to `chat_history`.
-    7. If escalated, create a row in `tickets` table and append human support notice.
+    Args:
+        telegram_id: Telegram user ID.
+        order_id: Order string ID (e.g. 'ORD-EEZPW').
 
     Returns:
-        Final reply text to be sent back to Telegram user.
+        True if valid and owned by user, False otherwise.
     """
+    if not order_id or not telegram_id or telegram_id <= 0:
+        return False
+    try:
+        supabase = get_supabase_client()
+        res = (
+            supabase.table("orders")
+            .select("id")
+            .eq("id", order_id.upper().strip())
+            .eq("user_id", telegram_id)
+            .execute()
+        )
+        return bool(res.data and len(res.data) > 0)
+    except Exception as e:
+        logger.error(f"❌ Error validating order ownership for order '{order_id}' user {telegram_id}: {e}")
+        return False
+
+
+def process_incoming_message(telegram_id: int, user_display_name: str, message_text: str) -> str:
+    """End-to-end orchestration pipeline for an incoming user message."""
     logger.info(f"📩 Processing message from user '{user_display_name}' ({telegram_id}): '{message_text[:50]}...'")
 
     try:
@@ -154,11 +168,186 @@ def process_incoming_message(telegram_id: int, user_display_name: str, message_t
         # Log incoming user message
         log_chat_message(user_id, "user", message_text)
 
+        # Check if the previous assistant turn was a ticket confirmation request or update prompt
+        last_assistant_msg = ""
+        prev_user_msg = ""
+        for msg in reversed(history_records):
+            if msg.get("role") == "assistant" and not last_assistant_msg:
+                last_assistant_msg = msg.get("content", "")
+            elif msg.get("role") == "user" and not prev_user_msg:
+                prev_user_msg = msg.get("content", "")
+
+        is_pending_ticket_prompt = (
+            "reply yes to confirm" in last_assistant_msg.lower() or 
+            "reply **yes** to confirm" in last_assistant_msg.lower() or
+            "open an official support ticket" in last_assistant_msg.lower()
+        )
+        is_manual_format_prompt = (
+            "order number: ord-" in last_assistant_msg.lower() or
+            "reply in the following format" in last_assistant_msg.lower()
+        )
+
+        user_clean_text = "".join(c for c in message_text.lower() if c.isalnum() or c.isspace()).strip()
+
+        # CASE 1: Handle user response to pending ticket confirmation request (Message 1)
+        if is_pending_ticket_prompt:
+            affirmative_words = {"yes", "yep", "yeah", "confirm", "sure", "ok", "yes please", "please do", "do it", "y", "correct"}
+            update_words = {"update", "edit", "change", "correct", "wrong order", "modify"}
+            cancel_words = {"cancel", "no ticket", "dont create", "don't create", "stop", "nevermind", "nvm"}
+
+            # Sub-case A: User confirmed with YES -> Create Ticket with actual trigger reason & issue text!
+            if any(w in user_clean_text.split() for w in affirmative_words) or user_clean_text in affirmative_words:
+                user_orders = get_user_active_orders(telegram_id)
+                linked_order_id = user_orders[0].get("id") if (user_orders and len(user_orders) > 0) else None
+
+                import re
+                match = re.search(r"ORD-[A-Za-z0-9]+", prev_user_msg + " " + last_assistant_msg, re.IGNORECASE)
+                if match:
+                    linked_order_id = match.group(0).upper()
+
+                issue_desc = prev_user_msg if prev_user_msg else message_text
+
+                # Dynamically evaluate exact trigger reason from customer's original query
+                _, actual_reason = evaluate_escalation_triggers(
+                    user_message=issue_desc,
+                    max_similarity=0.0,
+                    context_documents=[],
+                    recent_unresolved_count=0
+                )
+                if not actual_reason:
+                    actual_reason = "Customer reported damaged/defective product requiring escalation."
+
+                created_ticket = create_in_house_ticket(
+                    user_id=user_id,
+                    escalation_reason=actual_reason,
+                    order_id=linked_order_id,
+                    issue_description=issue_desc,
+                    issue=issue_desc
+                )
+
+                ticket_id = created_ticket.get("id") if created_ticket else "1"
+                order_display = f"#{linked_order_id}" if linked_order_id else "Not linked"
+
+                ticket_summary_reply = (
+                    "🎉 **Support Ticket Created Successfully!**\n\n"
+                    "📋 **Ticket Summary:**\n"
+                    f"• **Ticket ID:** #{ticket_id}\n"
+                    f"• **Order Number:** {order_display}\n"
+                    f"• **Issue:** {issue_desc}\n"
+                    "• **Status:** Open\n\n"
+                    "Our customer support team has received your ticket and will review your issue shortly. Thank you for your patience!"
+                )
+                log_chat_message(user_id, "assistant", ticket_summary_reply)
+                return ticket_summary_reply
+
+            # Sub-case B: User replies UPDATE -> Send Format Prompt
+            elif any(w in user_clean_text.split() for w in update_words) or user_clean_text in update_words:
+                update_prompt_reply = (
+                    "No problem! If you would like to update your details or specify a different order number, please reply in the following format:\n\n"
+                    "Order Number: ORD-XXXXX\n"
+                    "Issue: Your updated issue description here"
+                )
+                log_chat_message(user_id, "assistant", update_prompt_reply)
+                return update_prompt_reply
+
+            # Sub-case C: User replies CANCEL / NO TICKET / NO
+            elif any(w in user_clean_text.split() for w in cancel_words) or user_clean_text in {"no", "cancel", "n"}:
+                cancel_reply = "Understood! I have cancelled the support ticket creation request. Please let me know if there is anything else I can help you with!"
+                log_chat_message(user_id, "assistant", cancel_reply)
+                return cancel_reply
+
+        # CASE 2: Handle custom format input (Order Number: ORD-XXXXX \n Issue: ...)
+        import re
+        is_formatted_submission = "order number:" in message_text.lower() or (is_manual_format_prompt and re.search(r"ORD-[A-Za-z0-9]+", message_text, re.IGNORECASE))
+
+        if is_formatted_submission:
+            order_match = re.search(r"ORD-[A-Za-z0-9]+", message_text, re.IGNORECASE)
+            parsed_order_id = order_match.group(0).upper() if order_match else None
+
+            issue_match = re.search(r"issue\s*:\s*(.*)", message_text, re.IGNORECASE | re.DOTALL)
+            if issue_match and issue_match.group(1).strip():
+                parsed_issue = issue_match.group(1).strip()
+            else:
+                # Cleanly strip out Order Number tag & Order ID pattern from message_text if no explicit "Issue:" prefix
+                cleaned = message_text
+                if parsed_order_id:
+                    cleaned = re.sub(r"(?:Order\s*Number\s*:?\s*)?#?" + re.escape(parsed_order_id) + r"\s*[-:\n]*", "", cleaned, flags=re.IGNORECASE).strip()
+                    cleaned = re.sub(r"^(?:Order\s*Number|Order)\s*:\s*", "", cleaned, flags=re.IGNORECASE).strip()
+                
+                if cleaned:
+                    parsed_issue = cleaned
+                else:
+                    # User only provided order number; find original issue description from history
+                    original_issue = ""
+                    for msg in reversed(history_records):
+                        if msg.get("role") == "user":
+                            c = msg.get("content", "").strip()
+                            if c.lower() not in {"yes", "update", "cancel", "no", "y", "n"} and not re.fullmatch(r"(?:order\s*number\s*:?\s*)?#?ORD-[A-Za-z0-9]+", c, re.IGNORECASE):
+                                original_issue = c
+                                break
+                    parsed_issue = original_issue if original_issue else message_text
+
+            if parsed_order_id:
+                # Validate order ownership in Supabase DB!
+                is_valid = validate_order_ownership(telegram_id, parsed_order_id)
+                if not is_valid:
+                    invalid_order_reply = (
+                        f"❌ **Invalid Order Number!** The order number `#{parsed_order_id}` was not found under your account.\n\n"
+                        "Please enter a valid order number associated with your account in the format:\n"
+                        "Order Number: ORD-XXXXX\n"
+                        "Issue: Your issue description"
+                    )
+                    log_chat_message(user_id, "assistant", invalid_order_reply)
+                    return invalid_order_reply
+
+                # Dynamically evaluate trigger reason for submitted issue
+                _, actual_reason = evaluate_escalation_triggers(
+                    user_message=parsed_issue,
+                    max_similarity=0.0,
+                    context_documents=[],
+                    recent_unresolved_count=0
+                )
+                if not actual_reason:
+                    actual_reason = "Customer submitted updated order & issue details."
+
+                # Valid Order! Create ticket in Supabase
+                created_ticket = create_in_house_ticket(
+                    user_id=user_id,
+                    escalation_reason=actual_reason,
+                    order_id=parsed_order_id,
+                    issue_description=parsed_issue,
+                    issue=parsed_issue
+                )
+
+                ticket_id = created_ticket.get("id") if created_ticket else "1"
+                ticket_summary_reply = (
+                    "🎉 **Support Ticket Created Successfully!**\n\n"
+                    "📋 **Ticket Summary:**\n"
+                    f"• **Ticket ID:** #{ticket_id}\n"
+                    f"• **Order Number:** #{parsed_order_id}\n"
+                    f"• **Issue:** {parsed_issue}\n"
+                    "• **Status:** Open\n\n"
+                    "Our customer support team has received your ticket and will review your issue shortly. Thank you for your patience!"
+                )
+                log_chat_message(user_id, "assistant", ticket_summary_reply)
+                return ticket_summary_reply
+
         # Step 3: RAG Retrieval
         docs, max_similarity = retrieve_context(message_text, match_threshold=SIMILARITY_THRESHOLD, match_count=3)
 
-        # Step 4: LLM Reply Generation
-        ai_reply = generate_llm_response(message_text, docs, formatted_history)
+        # Step 3.5: Fetch Active Customer Orders for Context Injection
+        user_orders = get_user_active_orders(telegram_id)
+        if user_orders:
+            formatted_orders_list = []
+            for o in user_orders:
+                p_info = o.get("products") or {}
+                p_name = p_info.get("name", "Product")
+                p_price = p_info.get("price", "")
+                price_str = f" (${p_price})" if p_price else ""
+                formatted_orders_list.append(f"- Order #{o.get('id')}: {p_name}{price_str} | Status: {o.get('status')}")
+            active_orders_formatted = "\n".join(formatted_orders_list)
+        else:
+            active_orders_formatted = "No linked active orders found for this customer account."
 
         # Step 5: Escalation Evaluation
         should_escalate, escalation_reason = evaluate_escalation_triggers(
@@ -168,25 +357,35 @@ def process_incoming_message(telegram_id: int, user_display_name: str, message_t
             recent_unresolved_count=recent_unresolved
         )
 
-        final_reply = ai_reply
-
-        # Step 6: Handle Escalation Action
+        # STEP B: If query requires escalation -> Send Message 1 (Confirmation Request with 3 choices)
         if should_escalate:
-            logger.info(f"⚠️ Message triggered escalation. Reason: {escalation_reason}")
-            created_ticket = create_in_house_ticket(user_id, escalation_reason)
+            linked_order_id = user_orders[0].get("id") if (user_orders and len(user_orders) > 0) else None
+            import re
+            match = re.search(r"ORD-[A-Za-z0-9]+", message_text, re.IGNORECASE)
+            if match:
+                linked_order_id = match.group(0).upper()
 
-            ticket_id = created_ticket.get("id") if created_ticket else "N/A"
-            escalation_notice = (
-                f"\n\n--- Support Ticket #{ticket_id} Created ---\n"
-                "Your request has been logged with our customer support team. "
-                "A representative will review your issue shortly."
+            order_display = f"#{linked_order_id}" if linked_order_id else "Not specified"
+
+            confirm_request_reply = (
+                "I am very sorry to hear about the issue with your item.\n\n"
+                "Before I submit your request to our customer support team, please confirm if you would like me to open an official support ticket:\n\n"
+                "📋 **Proposed Ticket Details:**\n"
+                f"• **Order Number:** {order_display}\n"
+                f"• **Issue:** {message_text}\n"
+                "• **Status:** Pending Confirmation\n\n"
+                "**Options:**\n"
+                "• Reply **YES** to confirm ticket creation as listed.\n"
+                "• Reply **UPDATE** to correct or change the Order Number or Issue.\n"
+                "• Reply **CANCEL** if you do not want to open a support ticket."
             )
-            final_reply += escalation_notice
+            log_chat_message(user_id, "assistant", confirm_request_reply)
+            return confirm_request_reply
 
-        # Log assistant response
-        log_chat_message(user_id, "assistant", final_reply)
-
-        return final_reply
+        # Step 4: Normal LLM Reply Generation (Non-escalated queries)
+        ai_reply = generate_llm_response(message_text, docs, formatted_history, active_orders_formatted)
+        log_chat_message(user_id, "assistant", ai_reply)
+        return ai_reply
     except Exception as e:
         logger.error(f"❌ Unhandled error in process_incoming_message: {e}", exc_info=True)
         return (

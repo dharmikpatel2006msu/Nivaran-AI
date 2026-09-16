@@ -57,6 +57,9 @@ class ChatMessage(ChatMessageBase):
 class TicketBase(BaseModel):
     user_id: int
     escalation_reason: str
+    order_id: Optional[str] = Field(None, description="Linked order ID if applicable")
+    issue: Optional[str] = Field(None, description="Exact issue text reported by customer")
+    issue_description: Optional[str] = Field(None, description="Detailed customer issue explanation")
 
 
 class TicketCreate(TicketBase):

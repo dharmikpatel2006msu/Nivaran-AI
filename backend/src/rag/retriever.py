@@ -119,3 +119,30 @@ def retrieve_context(
         logger.error(f"❌ Error querying pgvector in Supabase: {e}")
         # Return empty list and zero similarity score as fallback
         return [], 0.0
+
+
+def get_user_active_orders(telegram_id: int) -> List[Dict[str, Any]]:
+    """Retrieves active orders linked to user's telegram_id joined with product details.
+
+    Args:
+        telegram_id: Telegram user ID.
+
+    Returns:
+        List of order dictionaries with product details.
+    """
+    if not telegram_id or telegram_id <= 0:
+        return []
+
+    try:
+        supabase = get_supabase_client()
+        response = (
+            supabase.table("orders")
+            .select("id, status, created_at, products(name, price)")
+            .eq("user_id", telegram_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return response.data or []
+    except Exception as e:
+        logger.error(f"❌ Error fetching active orders for telegram_id={telegram_id}: {e}")
+        return []

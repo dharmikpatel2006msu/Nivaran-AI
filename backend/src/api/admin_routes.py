@@ -54,6 +54,8 @@ MOCK_TICKETS = [
         user_id=1,
         status=TicketStatus.OPEN,
         escalation_reason="Low retrieval confidence on return query",
+        order_id="ORD-69Z2N",
+        issue_description="Customer asking about return instructions for smartwatch.",
         created_at=datetime.utcnow()
     ),
     Ticket(
@@ -61,6 +63,8 @@ MOCK_TICKETS = [
         user_id=2,
         status=TicketStatus.IN_PROGRESS,
         escalation_reason="Red-flag detected: 'damaged item'",
+        order_id="ORD-88219",
+        issue_description="i get the smart watch but it is not working ? and i think it is dammaged",
         created_at=datetime.utcnow()
     ),
     Ticket(
@@ -68,6 +72,8 @@ MOCK_TICKETS = [
         user_id=1,
         status=TicketStatus.RESOLVED,
         escalation_reason="Manual escalation requested",
+        order_id=None,
+        issue_description="User requested human support agent connection.",
         created_at=datetime.utcnow(),
         resolved_at=datetime.utcnow()
     ),

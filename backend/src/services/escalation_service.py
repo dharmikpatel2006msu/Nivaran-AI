@@ -83,34 +83,81 @@ def evaluate_escalation_triggers(
     return False, ""
 
 
-def create_in_house_ticket(user_id: int, escalation_reason: str) -> Optional[Dict[str, Any]]:
-    """Inserts a new ticket into the Supabase `tickets` table with status 'open'.
+def create_in_house_ticket(
+    user_id: int,
+    escalation_reason: str,
+    order_id: Optional[str] = None,
+    issue_description: Optional[str] = None,
+    issue: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """Inserts a new ticket into the Supabase `tickets` table with multi-tier schema fallback.
 
     Args:
         user_id: Foreign key ID of the user.
         escalation_reason: Explanation of why the ticket was opened.
+        order_id: Linked order ID if available (e.g. 'ORD-69Z2N').
+        issue_description: Detailed customer message content.
+        issue: Customer issue text.
 
     Returns:
         Inserted ticket record dict or None on failure.
     """
-    logger.info(f"📋 Creating in-house support ticket for user_id={user_id}...")
-    try:
-        supabase = get_supabase_client()
-        ticket_data = {
-            "user_id": user_id,
-            "status": TicketStatus.OPEN.value,
-            "escalation_reason": escalation_reason,
-            "created_at": datetime.utcnow().isoformat()
-        }
+    logger.info(f"📋 Creating in-house support ticket for user_id={user_id} (Order: {order_id})...")
+    supabase = get_supabase_client()
+    now_iso = datetime.utcnow().isoformat()
 
-        response = supabase.table("tickets").insert(ticket_data).execute()
-        if response.data:
+    issue_content = issue or issue_description
+
+    # Attempt 1: Full payload with order_id, issue, and issue_description
+    ticket_data_full = {
+        "user_id": user_id,
+        "status": TicketStatus.OPEN.value,
+        "escalation_reason": escalation_reason,
+        "order_id": order_id,
+        "issue": issue_content,
+        "issue_description": issue_content,
+        "created_at": now_iso
+    }
+    try:
+        response = supabase.table("tickets").insert(ticket_data_full).execute()
+        if response.data and len(response.data) > 0:
             created_ticket = response.data[0]
             logger.info(f"✅ Created ticket ID {created_ticket.get('id')} with status 'open'.")
             return created_ticket
-        else:
-            logger.error("❌ Failed to insert ticket into database.")
-            return None
     except Exception as e:
-        logger.error(f"❌ Error creating escalation ticket in Supabase: {e}")
-        return None
+        logger.warning(f"⚠️ Primary ticket insert failed ({e}), attempting fallback without order_id FK...")
+
+    # Attempt 2: Fallback without order_id (in case FK constraint fails or order_id missing)
+    ticket_data_no_order = {
+        "user_id": user_id,
+        "status": TicketStatus.OPEN.value,
+        "escalation_reason": escalation_reason,
+        "issue_description": issue_description,
+        "created_at": now_iso
+    }
+    try:
+        response = supabase.table("tickets").insert(ticket_data_no_order).execute()
+        if response.data and len(response.data) > 0:
+            created_ticket = response.data[0]
+            logger.info(f"✅ Created ticket ID {created_ticket.get('id')} via fallback 1.")
+            return created_ticket
+    except Exception as e:
+        logger.warning(f"⚠️ Fallback 1 ticket insert failed ({e}), attempting minimal schema insert...")
+
+    # Attempt 3: Minimal insert matching baseline migration 02 schema (user_id, status, escalation_reason)
+    ticket_data_minimal = {
+        "user_id": user_id,
+        "status": TicketStatus.OPEN.value,
+        "escalation_reason": escalation_reason,
+        "created_at": now_iso
+    }
+    try:
+        response = supabase.table("tickets").insert(ticket_data_minimal).execute()
+        if response.data and len(response.data) > 0:
+            created_ticket = response.data[0]
+            logger.info(f"✅ Created ticket ID {created_ticket.get('id')} via minimal fallback.")
+            return created_ticket
+    except Exception as e:
+        logger.error(f"❌ All ticket creation attempts failed in Supabase: {e}")
+
+    return None

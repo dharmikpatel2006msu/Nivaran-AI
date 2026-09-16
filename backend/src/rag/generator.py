@@ -62,7 +62,8 @@ def clean_llm_output(raw_text: str) -> str:
 def generate_llm_response(
     user_message: str,
     context_documents: List[Dict[str, Any]],
-    chat_history_formatted: str = ""
+    chat_history_formatted: str = "",
+    active_orders_formatted: str = ""
 ) -> str:
     """Generates a contextual response using Groq LLMs with automatic fallbacks.
 
@@ -70,12 +71,13 @@ def generate_llm_response(
         user_message: Incoming user text query.
         context_documents: Retrieved knowledge docs from pgvector.
         chat_history_formatted: Formatted recent conversation window string.
+        active_orders_formatted: Formatted list of customer active orders.
 
     Returns:
         Cleaned LLM response text.
     """
     context_text = "\n\n".join([doc.get("content", "") for doc in context_documents]) if context_documents else ""
-    system_prompt = build_system_prompt(context_text, chat_history_formatted)
+    system_prompt = build_system_prompt(context_text, chat_history_formatted, active_orders_formatted)
 
     models_to_try = [
         LLM_MODEL,
