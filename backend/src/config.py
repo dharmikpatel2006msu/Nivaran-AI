@@ -1,10 +1,10 @@
 """Configuration and settings module for Nivaran AI Backend."""
 
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file (searches current and parent directories)
+load_dotenv(find_dotenv(usecwd=True))
 
 # --- Server & General Config ---
 PORT = int(os.getenv("PORT", 8000))
@@ -21,7 +21,7 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 
 # --- Database & Supabase Config ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # --- RAG & AI Model Configuration ---

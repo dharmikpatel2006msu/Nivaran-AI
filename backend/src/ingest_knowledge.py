@@ -7,16 +7,16 @@ generates Gemini vector embeddings, and seeds/upserts into Supabase pgvector `do
 
 import os
 import sys
-import re
-import glob
-import logging
-from typing import List, Dict, Any
 
 # Ensure backend directory is in sys.path
 backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+import re
+import glob
+import logging
+from typing import List, Dict, Any
 from src.rag.retriever import generate_embedding
 from src.db.supabase_client import get_supabase_client
 
