@@ -8,6 +8,7 @@ import logging
 import asyncio
 from typing import Optional
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from src.config import TELEGRAM_BOT_TOKEN
 from src.services.chat_service import process_incoming_message, get_or_create_user
@@ -16,6 +17,21 @@ from src.db.supabase_client import get_supabase_client
 logger = logging.getLogger(__name__)
 
 _telegram_app: Optional[Application] = None
+
+
+async def safe_reply_markdown(update: Update, text: str) -> None:
+    """Sends a Telegram message with Markdown formatting enabled for **bold**, *italic*, lists, and code.
+
+    Falls back to plain text if Telegram API fails to parse entities.
+    """
+    if not update.message or not text:
+        return
+
+    try:
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+    except Exception as e:
+        logger.warning(f"⚠️ Telegram Markdown parsing fallback triggered ({e}), sending plain text response.")
+        await update.message.reply_text(text)
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -43,10 +59,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 # Update user_id on orders table
                 supabase.table("orders").update({"user_id": telegram_id}).eq("id", order_id).execute()
 
-                # Fetch product details for confirmation message
-                order_res = supabase.table("orders").select("id, status, products(name)").eq("id", order_id).execute()
-                if order_res.data and len(order_res.data) > 0:
-                    item_data = order_res.data[0]
+                # Get product details if available
+                res = supabase.table("orders").select("product_id, products(name)").eq("id", order_id).execute()
+                if res.data and len(res.data) > 0:
+                    item_data = res.data[0]
                     p_info = item_data.get("products") or {}
                     product_name = p_info.get("name", product_name)
             except Exception as e:
@@ -58,7 +74,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 f"📦 **Current Status:** `Processing`\n\n"
                 f"You can ask me anytime about your order status, shipping updates, or return policies!"
             )
-            await update.message.reply_text(link_success_text, parse_mode="Markdown")
+            await safe_reply_markdown(update, link_success_text)
             return
 
     # Standard fallback welcome message
@@ -66,7 +82,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         f"👋 Hello {display_name}! I am Nivaran AI Support Assistant.\n\n"
         "Ask me any question about our services, store hours, returns, or order tracking!"
     )
-    await update.message.reply_text(welcome_text)
+    await safe_reply_markdown(update, welcome_text)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -75,7 +91,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     Ported from `index.js` lines 57-131:
     - Extracts sender info and text.
     - Delegates processing to `process_incoming_message`.
-    - Sends response reply to Telegram user.
+    - Sends response reply to Telegram user with Markdown formatting.
     """
     if not update.message or not update.message.text:
         return
@@ -109,12 +125,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "shipping options, return policies, or store hours. How can I assist you?"
             )
 
-        logger.info(f"📤 Sending Telegram reply to {display_name}...")
-        await update.message.reply_text(reply_text)
+        logger.info(f"📤 Sending Telegram reply to {display_name} with Markdown formatting...")
+        await safe_reply_markdown(update, reply_text)
         logger.info("✅ Telegram reply sent successfully.")
     except Exception as e:
         logger.error(f"❌ Error handling Telegram message: {e}", exc_info=True)
-        await update.message.reply_text(
+        await safe_reply_markdown(
+            update,
             "I apologize, but I'm having trouble processing that request right now. "
             "Please try asking again, or let me know if you need help with returns, shipping, or order tracking."
         )
