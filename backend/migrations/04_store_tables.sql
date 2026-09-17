@@ -1,4 +1,4 @@
--- Migration 06: Customer Storefront Products, Orders & Order Items Schema
+-- Migration 04: Customer Storefront Products, Orders & Order Items Schema
 
 -- Create Store Products Table
 CREATE TABLE IF NOT EXISTS store_products (
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS store_orders (
     customer_name TEXT NOT NULL,
     address TEXT NOT NULL,
     email TEXT NOT NULL,
-    phone TEXT NOT NULL,
+    phone TEXT,
     total NUMERIC(10, 2) NOT NULL,
     status VARCHAR(20) DEFAULT 'processing',
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

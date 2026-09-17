@@ -20,6 +20,9 @@
         <span class="brand-badge">Nivaran AI</span>
       </a>
       <div class="header-actions">
+        <a href="https://t.me/NivaranAiSupportBot" target="_blank" class="btn btn-secondary support-header-btn" title="Customer Care Support Bot" style="text-decoration: none; font-size: 0.85rem; padding: 0.45rem 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+          💬 Customer Support
+        </a>
         <button class="cart-icon-btn" onclick="openCartDrawer()" title="View Cart" id="header-cart-btn">
           🛒
           <span class="cart-badge" id="header-cart-badge">0</span>
@@ -131,12 +134,6 @@
           <div class="invalid-feedback">Please enter a valid email address.</div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="cust-phone">Phone Number *</label>
-          <input type="tel" id="cust-phone" class="form-input" placeholder="e.g. +1 555-0192" />
-          <div class="invalid-feedback">Please enter a valid contact phone number.</div>
-        </div>
-
         <div class="summary-row" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
           <span>Total Payable</span>
           <span id="checkout-total-display" style="color: var(--primary);">$0.00</span>
@@ -157,7 +154,7 @@
       
       <div class="order-chip" id="confirm-order-id">#ORD-XXXXX</div>
 
-      <div style="background: var(--bg-surface-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; text-align: left; font-size: 0.9rem; border: 1px solid var(--border);">
+      <div style="background: var(--bg-surface-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; text-align: left; font-size: 0.9rem; border: 1px solid var(--border);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
           <span style="color: var(--text-muted);">Customer:</span>
           <strong id="confirm-customer-name" style="color: var(--text-primary);">Alice Smith</strong>
@@ -170,6 +167,16 @@
           <span style="color: var(--text-muted);">Amount Paid:</span>
           <strong id="confirm-total" style="color: var(--primary); font-size: 1rem;">$0.00</strong>
         </div>
+      </div>
+
+      <!-- Customer Support Section -->
+      <div style="background: rgba(79, 70, 229, 0.06); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; text-align: center; border: 1px solid rgba(79, 70, 229, 0.2);">
+        <p style="font-size: 0.88rem; color: var(--text-primary); font-weight: 600; margin-bottom: 0.6rem;">
+          Need assistance or order tracking? Reach out to our Customer Support Bot!
+        </p>
+        <a href="https://t.me/NivaranAiSupportBot" target="_blank" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; font-size: 0.85rem; padding: 0.5rem 1rem;">
+          💬 Contact Customer Support on Telegram
+        </a>
       </div>
 
       <button class="btn btn-primary" onclick="closeOverlay('modal-success')">Continue Shopping</button>
@@ -188,7 +195,7 @@
       <span>Cart</span>
       <span class="cart-badge" id="nav-cart-badge" style="position: absolute; top: 2px; right: 28%; font-size: 0.65rem; min-width: 16px; height: 16px;">0</span>
     </button>
-    <a href="#" class="bottom-nav-item" onclick="alert('For customer support, send a message to our Nivaran AI Telegram Bot!')">
+    <a href="https://t.me/NivaranAiSupportBot" target="_blank" class="bottom-nav-item">
       <span class="bottom-nav-icon">💬</span>
       <span>Support</span>
     </a>

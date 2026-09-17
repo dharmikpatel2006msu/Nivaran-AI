@@ -24,7 +24,7 @@ class CustomerInfo(BaseModel):
     name: str = Field(..., min_length=2, description="Customer full name")
     address: str = Field(..., min_length=5, description="Shipping street address")
     email: str = Field(..., description="Customer contact email address")
-    phone: str = Field(..., min_length=7, description="Customer contact phone number")
+    phone: Optional[str] = Field("", description="Customer contact phone number (optional)")
 
 
 class OrderItemRequest(BaseModel):

@@ -323,7 +323,7 @@ function openCheckoutModal() {
   closeCartDrawer();
 
   // Reset form inputs & validation messages
-  ['cust-name', 'cust-address', 'cust-email', 'cust-phone'].forEach(id => {
+  ['cust-name', 'cust-address', 'cust-email'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.value = '';
@@ -344,23 +344,22 @@ function validateCheckoutForm() {
   const fields = [
     { id: 'cust-name', check: val => val.trim().length >= 2, msg: 'Please enter your full name.' },
     { id: 'cust-address', check: val => val.trim().length >= 5, msg: 'Please enter a valid shipping address.' },
-    { id: 'cust-email', check: val => /\S+@\S+\.\S+/.test(val), msg: 'Please enter a valid email address.' },
-    { id: 'cust-phone', check: val => /^\+?[0-9\s\-]{7,15}$/.test(val.trim()), msg: 'Please enter a valid contact phone number.' }
+    { id: 'cust-email', check: val => /\S+@\S+\.\S+/.test(val), msg: 'Please enter a valid email address.' }
   ];
 
   fields.forEach(f => {
     const input = document.getElementById(f.id);
-    const feedback = input.nextElementSibling;
-    const isFieldValid = f.check(input.value);
+    const feedback = input ? input.nextElementSibling : null;
+    const isFieldValid = f.check(input ? input.value : '');
 
     if (!isFieldValid) {
-      input.classList.add('is-invalid');
+      if (input) input.classList.add('is-invalid');
       if (feedback && feedback.classList.contains('invalid-feedback')) {
         feedback.innerText = f.msg;
       }
       isValid = false;
     } else {
-      input.classList.remove('is-invalid');
+      if (input) input.classList.remove('is-invalid');
     }
   });
 
@@ -374,10 +373,9 @@ async function submitCheckoutOrder() {
   const name = document.getElementById('cust-name').value.trim();
   const address = document.getElementById('cust-address').value.trim();
   const email = document.getElementById('cust-email').value.trim();
-  const phone = document.getElementById('cust-phone').value.trim();
 
   const orderPayload = {
-    customer: { name, address, email, phone },
+    customer: { name, address, email, phone: '' },
     items: cartItems.map(item => ({
       product_id: item.product.id,
       quantity: item.quantity
