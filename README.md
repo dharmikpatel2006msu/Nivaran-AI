@@ -1,5 +1,5 @@
 # Nivaran AI — Monorepo Architecture
-
+Nivaran AI
 Nivaran AI is an AI-driven, Retrieval-Augmented Generation (RAG) Customer Support Agent for E-commerce & Retail applications. 
 
 This repository is organized as a monorepo supporting a 5-person engineering team.
