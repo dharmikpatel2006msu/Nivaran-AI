@@ -1,19 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nivaran AI | Admin & Support Control Panel</title>
-    <!-- Modern Typography -->
+    <!-- Modern Typography & Markdown Parser -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <style>
-        :root {
+        /* Modern Theme Tokens (White Background Default) */
+        :root, html[data-theme="light"] {
+            --bg-body: #ffffff;
+            --bg-surface: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f8fafc;
+            --bg-control: #f1f5f9;
+            --border-color: #e2e8f0;
+            --border-highlight: rgba(99, 102, 241, 0.4);
+            
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.2);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            
+            --status-open-bg: rgba(239, 68, 68, 0.08);
+            --status-open-text: #dc2626;
+            --status-open-border: rgba(239, 68, 68, 0.25);
+            
+            --status-progress-bg: rgba(245, 158, 11, 0.12);
+            --status-progress-text: #d97706;
+            --status-progress-border: rgba(245, 158, 11, 0.3);
+            
+            --status-resolved-bg: rgba(16, 185, 129, 0.1);
+            --status-resolved-text: #059669;
+            --status-resolved-border: rgba(16, 185, 129, 0.25);
+
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --text-subtle: #64748b;
+            --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.04);
+            --shadow-drawer: -10px 0 30px rgba(0, 0, 0, 0.1);
+        }
+
+        html[data-theme="dark"] {
             --bg-body: #07090e;
             --bg-surface: #0f1420;
             --bg-card: rgba(21, 28, 44, 0.75);
             --bg-card-hover: rgba(30, 41, 64, 0.85);
+            --bg-control: rgba(0, 0, 0, 0.4);
             --border-color: rgba(255, 255, 255, 0.08);
             --border-highlight: rgba(99, 102, 241, 0.3);
             
@@ -36,6 +72,8 @@
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
             --text-subtle: #6b7280;
+            --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.4);
+            --shadow-drawer: -10px 0 30px rgba(0, 0, 0, 0.5);
         }
 
         * {
@@ -52,20 +90,26 @@
             display: flex;
             flex-direction: column;
             background-image: 
-                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
-                radial-gradient(circle at 90% 90%, rgba(139, 92, 246, 0.10) 0%, transparent 45%);
+                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.05) 0%, transparent 45%),
+                radial-gradient(circle at 90% 90%, rgba(139, 92, 246, 0.04) 0%, transparent 45%);
             background-attachment: fixed;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* Header Navigation */
         header {
-            background: rgba(15, 20, 32, 0.85);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
             z-index: 50;
             padding: 1rem 2rem;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        html[data-theme="dark"] header {
+            background: rgba(15, 20, 32, 0.85);
         }
 
         .header-container {
@@ -101,18 +145,22 @@
             font-size: 1.25rem;
             font-weight: 700;
             letter-spacing: -0.02em;
-            color: #fff;
+            color: var(--text-main);
         }
 
         .logo-badge {
             font-size: 0.7rem;
-            background: rgba(99, 102, 241, 0.2);
-            color: #a5b4fc;
+            background: rgba(99, 102, 241, 0.1);
+            color: #4f46e5;
             padding: 0.2rem 0.5rem;
             border-radius: 6px;
             border: 1px solid var(--border-highlight);
             text-transform: uppercase;
             font-weight: 600;
+        }
+
+        html[data-theme="dark"] .logo-badge {
+            color: #a5b4fc;
         }
 
         .header-actions {
@@ -127,7 +175,7 @@
             gap: 0.5rem;
             font-size: 0.825rem;
             color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--bg-control);
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
             border: 1px solid var(--border-color);
@@ -174,13 +222,13 @@
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--bg-control);
             color: var(--text-main);
             border: 1px solid var(--border-color);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.12);
+            background: var(--border-color);
         }
 
         /* Main Container */
@@ -206,6 +254,7 @@
             font-weight: 800;
             margin-bottom: 0.5rem;
             letter-spacing: -0.02em;
+            color: var(--text-main);
         }
 
         .dashboard-title p {
@@ -215,7 +264,7 @@
 
         .view-switch {
             display: flex;
-            background: rgba(0, 0, 0, 0.4);
+            background: var(--bg-control);
             padding: 0.3rem;
             border-radius: 12px;
             border: 1px solid var(--border-color);
@@ -258,6 +307,7 @@
             padding: 1.35rem;
             backdrop-filter: blur(12px);
             transition: transform 0.2s ease, border-color 0.2s ease;
+            box-shadow: var(--shadow-card);
             cursor: pointer;
         }
 
@@ -278,7 +328,7 @@
         .metric-value {
             font-size: 2rem;
             font-weight: 800;
-            color: #ffffff;
+            color: var(--text-main);
             line-height: 1;
             display: flex;
             align-items: baseline;
@@ -298,7 +348,7 @@
             border-radius: 16px;
             backdrop-filter: blur(12px);
             overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            box-shadow: var(--shadow-card);
         }
 
         /* Controls Bar */
@@ -310,13 +360,13 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 1rem;
-            background: rgba(15, 20, 32, 0.4);
+            background: var(--bg-control);
         }
 
         .filter-tabs {
             display: flex;
             gap: 0.5rem;
-            background: rgba(0, 0, 0, 0.3);
+            background: var(--bg-body);
             padding: 0.25rem;
             border-radius: 10px;
             border: 1px solid var(--border-color);
@@ -347,11 +397,11 @@
 
         .search-input {
             width: 100%;
-            background: rgba(0, 0, 0, 0.4);
+            background: var(--bg-body);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 0.55rem 1rem 0.55rem 2.4rem;
-            color: #ffffff;
+            color: var(--text-main);
             font-size: 0.875rem;
             outline: none;
             transition: border-color 0.2s ease;
@@ -384,7 +434,7 @@
         }
 
         th {
-            background: rgba(10, 13, 20, 0.6);
+            background: var(--bg-control);
             color: var(--text-muted);
             font-weight: 600;
             font-size: 0.75rem;
@@ -411,18 +461,22 @@
         .ticket-id {
             font-weight: 700;
             font-family: monospace;
+            color: #4f46e5;
+        }
+
+        html[data-theme="dark"] .ticket-id {
             color: #a5b4fc;
         }
 
         .order-badge {
             display: inline-block;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--bg-control);
             border: 1px solid var(--border-color);
             padding: 0.2rem 0.5rem;
             border-radius: 6px;
             font-family: monospace;
             font-size: 0.8rem;
-            color: #e0e7ff;
+            color: var(--text-main);
         }
 
         .status-badge {
@@ -482,7 +536,7 @@
         }
 
         .action-btn {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--bg-control);
             border: 1px solid var(--border-color);
             color: var(--text-main);
             padding: 0.4rem 0.75rem;
@@ -494,13 +548,13 @@
         }
 
         .action-btn:hover {
-            background: rgba(99, 102, 241, 0.2);
+            background: rgba(99, 102, 241, 0.15);
             border-color: var(--border-highlight);
-            color: #ffffff;
+            color: var(--primary);
         }
 
         .select-status {
-            background: rgba(0, 0, 0, 0.5);
+            background: var(--bg-body);
             border: 1px solid var(--border-color);
             color: var(--text-main);
             padding: 0.35rem 0.6rem;
@@ -521,8 +575,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(6px);
             z-index: 100;
             display: flex;
             justify-content: flex-end;
@@ -539,14 +593,14 @@
         .modal-drawer {
             width: 100%;
             max-width: 620px;
-            background: #0f1420;
+            background: var(--bg-surface);
             border-left: 1px solid var(--border-color);
             height: 100%;
             display: flex;
             flex-direction: column;
             transform: translateX(100%);
             transition: transform 0.3s ease;
-            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+            box-shadow: var(--shadow-drawer);
         }
 
         .modal-overlay.active .modal-drawer {
@@ -559,7 +613,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(10, 13, 20, 0.8);
+            background: var(--bg-control);
         }
 
         .drawer-title {
@@ -568,6 +622,7 @@
             display: flex;
             align-items: center;
             gap: 0.6rem;
+            color: var(--text-main);
         }
 
         .close-btn {
@@ -581,8 +636,8 @@
         }
 
         .close-btn:hover {
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            background: var(--border-color);
         }
 
         .drawer-body {
@@ -595,7 +650,7 @@
         }
 
         .ticket-info-banner {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--bg-control);
             border: 1px solid var(--border-color);
             border-radius: 10px;
             padding: 1rem;
@@ -628,7 +683,7 @@
 
         .chat-bubble.assistant {
             align-self: flex-start;
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--bg-control);
             border: 1px solid var(--border-color);
             color: var(--text-main);
             border-bottom-left-radius: 2px;
@@ -637,8 +692,29 @@
         .chat-meta {
             font-size: 0.7rem;
             opacity: 0.7;
-            margin-top: 0.3rem;
+            margin-top: 0.4rem;
             text-align: right;
+        }
+
+        .chat-content p {
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .chat-content ul, .chat-content ol {
+            margin-left: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-content li {
+            margin-bottom: 0.25rem;
+        }
+
+        .chat-content strong {
+            font-weight: 700;
         }
 
         /* Empty & Loading states */
@@ -662,6 +738,7 @@
             font-size: 0.8rem;
             color: var(--text-subtle);
             margin-top: auto;
+            background: var(--bg-surface);
         }
     </style>
 </head>
@@ -677,6 +754,9 @@
             </a>
 
             <div class="header-actions">
+                <button class="btn btn-secondary" id="theme-toggle-btn" onclick="toggleTheme()">
+                    ☀️ Light Mode
+                </button>
                 <div class="api-indicator">
                     <span class="pulse-dot"></span>
                     <span id="api-status-text">FastAPI Backend Connected</span>
@@ -716,17 +796,17 @@
             </div>
             <div class="metric-card" onclick="filterTickets('open', document.querySelector('[data-filter=\'open\']'))">
                 <div class="metric-label">Open Escalations</div>
-                <div class="metric-value" style="color: #f87171;" id="stat-open-tickets">--</div>
+                <div class="metric-value" style="color: #dc2626;" id="stat-open-tickets">--</div>
                 <div class="metric-sub">Requires staff attention</div>
             </div>
             <div class="metric-card" onclick="filterTickets('in_progress', document.querySelector('[data-filter=\'in_progress\']'))">
                 <div class="metric-label">In Progress</div>
-                <div class="metric-value" style="color: #fbbf24;" id="stat-progress-tickets">--</div>
+                <div class="metric-value" style="color: #d97706;" id="stat-progress-tickets">--</div>
                 <div class="metric-sub">Currently being handled</div>
             </div>
             <div class="metric-card" onclick="filterTickets('resolved', document.querySelector('[data-filter=\'resolved\']'))">
                 <div class="metric-label">Resolved</div>
-                <div class="metric-value" style="color: #34d399;" id="stat-resolved-tickets">--</div>
+                <div class="metric-value" style="color: #059669;" id="stat-resolved-tickets">--</div>
                 <div class="metric-sub">Successfully closed</div>
             </div>
             <div class="metric-card" onclick="switchView('users')">
@@ -840,9 +920,30 @@
         let searchQuery = '';
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Apply theme setting
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme);
+
             fetchDashboardData();
             setInterval(fetchDashboardData, 30000);
         });
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(nextTheme);
+        }
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            const themeBtn = document.getElementById('theme-toggle-btn');
+            if (theme === 'light') {
+                themeBtn.innerText = '☀️ Light Mode';
+            } else {
+                themeBtn.innerText = '🌙 Dark Mode';
+            }
+        }
 
         async function fetchDashboardData() {
             const statusText = document.getElementById('api-status-text');
@@ -1095,15 +1196,15 @@
                 tr.innerHTML = `
                     <td class="ticket-id">User #${user.id}</td>
                     <td>
-                        <div style="font-weight: 700; color: #ffffff;">${escapeHtml(user.name || 'Anonymous User')}</div>
+                        <div style="font-weight: 700; color: var(--text-main);">${escapeHtml(user.name || 'Anonymous User')}</div>
                     </td>
                     <td>
                         <span class="order-badge">TG: ${user.telegram_id}</span>
                     </td>
                     <td style="font-size: 0.8rem; color: var(--text-muted);">${createdDate}</td>
-                    <td style="font-size: 0.8rem; color: #34d399;">${lastActiveDate}</td>
+                    <td style="font-size: 0.8rem; color: #059669; font-weight: 600;">${lastActiveDate}</td>
                     <td>
-                        <button class="action-btn" style="background: var(--primary-gradient); color: #fff;" onclick="openUserHistoryModal(${user.id}, null, '${escapeHtml(user.name)}')">
+                        <button class="action-btn" style="background: var(--primary-gradient); color: #fff; border: none;" onclick="openUserHistoryModal(${user.id}, null, '${escapeHtml(user.name)}')">
                             💬 Open Full Chat Log
                         </button>
                     </td>
@@ -1194,7 +1295,7 @@
 
             chatMessagesDiv.innerHTML = messages.map(msg => `
                 <div class="chat-bubble ${msg.role}">
-                    <div>${escapeHtml(msg.content)}</div>
+                    <div class="chat-content">${parseMarkdown(msg.content)}</div>
                     <div class="chat-meta">${msg.role === 'user' ? 'Customer' : 'Nivaran AI'} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
             `).join('');
@@ -1205,7 +1306,7 @@
                 { role: 'user', content: 'Hi, I received my order ORD-88219 today.', created_at: new Date(Date.now() - 1200000).toISOString() },
                 { role: 'assistant', content: 'Hello! I can help you with your order. What issue are you experiencing?', created_at: new Date(Date.now() - 1100000).toISOString() },
                 { role: 'user', content: 'i get the smart watch but it is not working ? and i think it is dammaged', created_at: new Date(Date.now() - 1000000).toISOString() },
-                { role: 'assistant', content: 'I am so sorry to hear that. I have immediately logged a support ticket for our human customer team to assist you.', created_at: new Date(Date.now() - 900000).toISOString() }
+                { role: 'assistant', content: 'Sure thing! Here\'s a quick overview of ShopNest\'s return policy:\n\n**Eligibility**\n- Most items can be returned within **7 days of delivery**.\n- Electronics accessories have a **10-day** window.\n- Personal-care items that have been opened or unsealed are **not returnable** for hygiene reasons.\n\n**Condition**\n- Items must be unused, in their original packaging, with all tags attached.\n\n**How to start a return**\n1. Go to **My Orders** → **Order Details** → **Return Item**.\n2. Select the reason for the return.\n3. A courier pickup will be scheduled automatically within **2–4 business days**.', created_at: new Date(Date.now() - 900000).toISOString() }
             ];
             renderChatMessages(mockMessages);
         }
@@ -1218,6 +1319,44 @@
             if (e.target.id === 'modal-overlay') {
                 closeModal();
             }
+        }
+
+        function parseMarkdown(text) {
+            if (!text) return '';
+
+            // 1. Use marked.js library if loaded
+            if (window.marked && typeof window.marked.parse === 'function') {
+                try {
+                    return window.marked.parse(text);
+                } catch (e) {
+                    console.warn('Marked parse error fallback:', e);
+                }
+            }
+
+            // 2. Pure JavaScript Fallback Markdown Parser
+            let html = escapeHtml(text);
+
+            // Bold **text** or __text__
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+            // Italic *text* or _text_
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+
+            // Inline code `code`
+            html = html.replace(/`(.*?)`/g, '<code style="background: rgba(0,0,0,0.06); padding: 0.1rem 0.3rem; border-radius: 4px; font-family: monospace;">$1</code>');
+
+            // Bullet lists (- item or * item)
+            html = html.replace(/(?:^|\n)[-•]\s+(.*?)(?=\n|$)/g, '<div style="margin-left: 0.8rem; display: flex; gap: 0.4rem;"><span>•</span><span>$1</span></div>');
+
+            // Numbered lists (1. item)
+            html = html.replace(/(?:^|\n)(\d+)\.\s+(.*?)(?=\n|$)/g, '<div style="margin-left: 0.8rem; display: flex; gap: 0.4rem;"><span>$1.</span><span>$2</span></div>');
+
+            // Newlines to <br>
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
         }
 
         function escapeHtml(str) {
