@@ -13,6 +13,14 @@ class TicketStatus(str, Enum):
     RESOLVED = "resolved"
 
 
+class TechnicianStatus(str, Enum):
+    """Status enumeration for field technician dispatch."""
+    UNASSIGNED = "unassigned"
+    DISPATCHED = "dispatched"
+    ON_SITE = "on_site"
+    RESOLVED = "resolved"
+
+
 class UserBase(BaseModel):
     telegram_id: int
     name: str
@@ -60,6 +68,10 @@ class TicketBase(BaseModel):
     order_id: Optional[str] = Field(None, description="Linked order ID if applicable")
     issue: Optional[str] = Field(None, description="Exact issue text reported by customer")
     issue_description: Optional[str] = Field(None, description="Detailed customer issue explanation")
+    customer_location: Optional[str] = Field(None, description="Customer physical location / address for field technician visit")
+    technician_name: Optional[str] = Field(None, description="Assigned technical staff member name")
+    technician_status: TechnicianStatus = Field(TechnicianStatus.UNASSIGNED, description="Current field dispatch status")
+    technician_notes: Optional[str] = Field(None, description="Notes logged by assigned technician")
 
 
 class TicketCreate(TicketBase):
@@ -78,6 +90,15 @@ class Ticket(TicketBase):
 
 class TicketStatusUpdate(BaseModel):
     status: TicketStatus = Field(..., description="New status for the ticket: open, in_progress, or resolved")
+
+
+class TicketDispatchUpdate(BaseModel):
+    technician_name: Optional[str] = Field(None, description="Assigned technician name")
+    technician_status: Optional[TechnicianStatus] = Field(None, description="Updated field dispatch status")
+    customer_location: Optional[str] = Field(None, description="Customer location or address")
+    technician_notes: Optional[str] = Field(None, description="Technician field notes")
+    status: Optional[TicketStatus] = Field(None, description="Overall ticket status")
+
 
 
 class AdminStats(BaseModel):

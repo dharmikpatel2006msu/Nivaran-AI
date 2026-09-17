@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nivaran AI | Admin & Support Control Panel</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #07090e;
+            --bg-surface: #0f1420;
+            --bg-card: rgba(21, 28, 44, 0.75);
+            --bg-card-hover: rgba(30, 41, 64, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(99, 102, 241, 0.3);
+            
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.25);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            
+            --status-open-bg: rgba(239, 68, 68, 0.15);
+            --status-open-text: #f87171;
+            --status-open-border: rgba(239, 68, 68, 0.3);
+            
+            --status-progress-bg: rgba(245, 158, 11, 0.15);
+            --status-progress-text: #fbbf24;
+            --status-progress-border: rgba(245, 158, 11, 0.3);
+            
+            --status-resolved-bg: rgba(16, 185, 129, 0.15);
+            --status-resolved-text: #34d399;
+            --status-resolved-border: rgba(16, 185, 129, 0.3);
+
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --text-subtle: #6b7280;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 90% 90%, rgba(139, 92, 246, 0.10) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        /* Header Navigation */
+        header {
+            background: rgba(15, 20, 32, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            padding: 1rem 2rem;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: var(--primary-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px var(--primary-glow);
+            font-weight: 800;
+            color: #fff;
+            font-size: 1.2rem;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+
+        .logo-badge {
+            font-size: 0.7rem;
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-highlight);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .api-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.825rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 1.1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: #ffffff;
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Main Container */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+            flex: 1;
+        }
+
+        .dashboard-head {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .dashboard-title h1 {
+            font-size: 1.85rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .dashboard-title p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .view-switch {
+            display: flex;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 0.3rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            gap: 0.3rem;
+        }
+
+        .view-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.6rem 1.2rem;
+            border-radius: 9px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .view-btn.active {
+            background: var(--primary-gradient);
+            color: #ffffff;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        /* Metrics Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1.35rem;
+            backdrop-filter: blur(12px);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-highlight);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .metric-sub {
+            font-size: 0.8rem;
+            color: var(--text-subtle);
+            margin-top: 0.5rem;
+        }
+
+        /* Content Section */
+        .content-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Controls Bar */
+        .controls-bar {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            background: rgba(15, 20, 32, 0.4);
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.25rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.45rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-gradient);
+            color: #ffffff;
+            box-shadow: 0 2px 8px var(--primary-glow);
+        }
+
+        .search-input-group {
+            position: relative;
+            min-width: 280px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 1rem 0.55rem 2.4rem;
+            color: #ffffff;
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        /* Table Design */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(10, 13, 20, 0.6);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 1.1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tbody tr {
+            transition: background-color 0.15s ease;
+        }
+
+        tbody tr:hover {
+            background-color: var(--bg-card-hover);
+        }
+
+        .ticket-id {
+            font-weight: 700;
+            font-family: monospace;
+            color: #a5b4fc;
+        }
+
+        .order-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #e0e7ff;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .status-open {
+            background: var(--status-open-bg);
+            color: var(--status-open-text);
+            border: 1px solid var(--status-open-border);
+        }
+
+        .status-in_progress {
+            background: var(--status-progress-bg);
+            color: var(--status-progress-text);
+            border: 1px solid var(--status-progress-border);
+        }
+
+        .status-resolved {
+            background: var(--status-resolved-bg);
+            color: var(--status-resolved-text);
+            border: 1px solid var(--status-resolved-border);
+        }
+
+        .escalation-box {
+            max-width: 320px;
+            line-height: 1.4;
+        }
+
+        .escalation-reason {
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.2rem;
+            font-size: 0.85rem;
+        }
+
+        .issue-desc {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .action-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--border-highlight);
+            color: #ffffff;
+        }
+
+        .select-status {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.35rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .select-status:focus {
+            border-color: var(--primary);
+        }
+
+        /* Modal Drawer for Chat History */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            justify-content: flex-end;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-drawer {
+            width: 100%;
+            max-width: 620px;
+            background: #0f1420;
+            border-left: 1px solid var(--border-color);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-overlay.active .modal-drawer {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 13, 20, 0.8);
+        }
+
+        .drawer-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+        }
+
+        .close-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .drawer-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .ticket-info-banner {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: 0.85rem 1.1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: var(--primary-gradient);
+            color: #ffffff;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-bubble.assistant {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-meta {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 0.3rem;
+            text-align: right;
+        }
+
+        /* Empty & Loading states */
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border-color);
+            padding: 1.25rem 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-subtle);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="header-container">
+            <a href="#" class="brand-logo">
+                <div class="logo-icon">N</div>
+                <div class="logo-text">Nivaran AI</div>
+                <span class="logo-badge">Support Admin</span>
+            </a>
+
+            <div class="header-actions">
+                <div class="api-indicator">
+                    <span class="pulse-dot"></span>
+                    <span id="api-status-text">FastAPI Backend Connected</span>
+                </div>
+                <button class="btn btn-secondary" id="refresh-btn" onclick="fetchDashboardData()">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main>
+        <div class="dashboard-head">
+            <div class="dashboard-title">
+                <h1 id="page-heading">Support Escalations & Chat Logs</h1>
+                <p id="page-subheading">Monitor real-time AI escalations, inspect user chat history transcripts, and resolve support tickets.</p>
+            </div>
+
+            <!-- View Toggle Switcher -->
+            <div class="view-switch">
+                <button class="view-btn active" id="view-tickets-btn" onclick="switchView('tickets')">
+                    🎫 Support Tickets
+                </button>
+                <button class="view-btn" id="view-users-btn" onclick="switchView('users')">
+                    👤 All Customers & Chat Logs
+                </button>
+            </div>
+        </div>
+
+        <!-- Metrics Overview Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card" onclick="filterTickets('all', document.querySelector('[data-filter=\'all\']'))">
+                <div class="metric-label">Total Support Tickets</div>
+                <div class="metric-value" id="stat-total-tickets">--</div>
+                <div class="metric-sub">Across all statuses</div>
+            </div>
+            <div class="metric-card" onclick="filterTickets('open', document.querySelector('[data-filter=\'open\']'))">
+                <div class="metric-label">Open Escalations</div>
+                <div class="metric-value" style="color: #f87171;" id="stat-open-tickets">--</div>
+                <div class="metric-sub">Requires staff attention</div>
+            </div>
+            <div class="metric-card" onclick="filterTickets('in_progress', document.querySelector('[data-filter=\'in_progress\']'))">
+                <div class="metric-label">In Progress</div>
+                <div class="metric-value" style="color: #fbbf24;" id="stat-progress-tickets">--</div>
+                <div class="metric-sub">Currently being handled</div>
+            </div>
+            <div class="metric-card" onclick="filterTickets('resolved', document.querySelector('[data-filter=\'resolved\']'))">
+                <div class="metric-label">Resolved</div>
+                <div class="metric-value" style="color: #34d399;" id="stat-resolved-tickets">--</div>
+                <div class="metric-sub">Successfully closed</div>
+            </div>
+            <div class="metric-card" onclick="switchView('users')">
+                <div class="metric-label">Total Customers</div>
+                <div class="metric-value" id="stat-total-users">--</div>
+                <div class="metric-sub">Click to inspect chat history</div>
+            </div>
+        </div>
+
+        <!-- Main Content Table Card -->
+        <div class="content-card">
+            <!-- Filter & Search Controls Bar -->
+            <div class="controls-bar">
+                <div class="filter-tabs" id="ticket-filter-tabs">
+                    <button class="tab-btn active" data-filter="all" onclick="filterTickets('all', this)">All Tickets</button>
+                    <button class="tab-btn" data-filter="open" onclick="filterTickets('open', this)">Open 🔴</button>
+                    <button class="tab-btn" data-filter="in_progress" onclick="filterTickets('in_progress', this)">In Progress 🟡</button>
+                    <button class="tab-btn" data-filter="resolved" onclick="filterTickets('resolved', this)">Resolved 🟢</button>
+                </div>
+
+                <div class="search-input-group">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-box" class="search-input" placeholder="Search by Ticket #, Order ID, User, or issue..." oninput="handleSearch()">
+                </div>
+            </div>
+
+            <!-- View 1: Tickets Table -->
+            <div id="tickets-view" class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticket ID</th>
+                            <th>User Info</th>
+                            <th>Order Reference</th>
+                            <th>Escalation Reason & Details</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tickets-table-body">
+                        <!-- Dynamically populated ticket rows -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- View 2: Users List Table -->
+            <div id="users-view" class="table-responsive" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Customer Name</th>
+                            <th>Telegram ID</th>
+                            <th>Account Created</th>
+                            <th>Last Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <!-- Dynamically populated customer rows -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-icon">📁</div>
+                <h3 id="empty-state-title">No Records Found</h3>
+                <p id="empty-state-desc">There are no items matching your current view or filter search.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Chat History Drawer Modal -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+        <div class="modal-drawer">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <span>💬 Conversation History & Customer Profile</span>
+                </div>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="drawer-body">
+                <div class="ticket-info-banner" id="modal-user-summary">
+                    <!-- User/Ticket summary -->
+                </div>
+
+                <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Complete Chat History Log
+                </h4>
+
+                <div class="chat-container" id="modal-chat-messages">
+                    <!-- Chat messages transcript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Nivaran AI Admin Portal &copy; 2026 | Automated Customer Support & Escalation Engine
+    </footer>
+
+    <!-- Frontend Script -->
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api/admin';
+        let allTickets = [];
+        let allUsers = [];
+        let activeView = 'tickets'; // 'tickets' or 'users'
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDashboardData();
+            setInterval(fetchDashboardData, 30000);
+        });
+
+        async function fetchDashboardData() {
+            const statusText = document.getElementById('api-status-text');
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.innerText = '⏳ Loading...';
+
+            try {
+                const [statsRes, ticketsRes, usersRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/stats`).then(r => r.json()),
+                    fetch(`${API_BASE_URL}/tickets`).then(r => r.json()),
+                    fetch(`${API_BASE_URL}/users`).then(r => r.json()).catch(() => [])
+                ]);
+
+                updateMetricsUI(statsRes);
+                allTickets = ticketsRes;
+                allUsers = usersRes && usersRes.length > 0 ? usersRes : extractUsersFromTickets(ticketsRes);
+                
+                renderActiveView();
+                statusText.innerText = 'FastAPI Backend Connected';
+            } catch (err) {
+                console.warn('Backend connection fallback warning:', err);
+                statusText.innerText = 'Backend Offline (Mock Data)';
+                
+                allTickets = [
+                    {
+                        id: 101,
+                        user_id: 1,
+                        status: 'open',
+                        escalation_reason: 'Low retrieval confidence on return query',
+                        order_id: 'ORD-69Z2N',
+                        issue_description: 'Customer asking about return instructions for smartwatch.',
+                        created_at: new Date().toISOString()
+                    },
+                    {
+                        id: 102,
+                        user_id: 2,
+                        status: 'in_progress',
+                        escalation_reason: "Red-flag detected: 'damaged item'",
+                        order_id: 'ORD-88219',
+                        issue_description: 'i get the smart watch but it is not working ? and i think it is dammaged',
+                        created_at: new Date(Date.now() - 3600000).toISOString()
+                    },
+                    {
+                        id: 103,
+                        user_id: 1,
+                        status: 'resolved',
+                        escalation_reason: 'Manual escalation requested',
+                        order_id: null,
+                        issue_description: 'User requested human support agent connection.',
+                        created_at: new Date(Date.now() - 86400000).toISOString()
+                    }
+                ];
+
+                allUsers = [
+                    { id: 1, telegram_id: 12345678, name: "Alice Smith", created_at: new Date().toISOString(), last_active_at: new Date().toISOString() },
+                    { id: 2, telegram_id: 87654321, name: "Bob Jones", created_at: new Date().toISOString(), last_active_at: new Date().toISOString() },
+                ];
+
+                updateMetricsUI({
+                    total_tickets: 3,
+                    open_tickets: 1,
+                    in_progress_tickets: 1,
+                    resolved_tickets: 1,
+                    total_users: 2
+                });
+                renderActiveView();
+            } finally {
+                refreshBtn.innerText = '🔄 Refresh';
+            }
+        }
+
+        function extractUsersFromTickets(tickets) {
+            const userMap = new Map();
+            tickets.forEach(t => {
+                if (!userMap.has(t.user_id)) {
+                    userMap.set(t.user_id, {
+                        id: t.user_id,
+                        telegram_id: 1000000 + t.user_id,
+                        name: `Customer #${t.user_id}`,
+                        created_at: t.created_at,
+                        last_active_at: t.created_at
+                    });
+                }
+            });
+            return Array.from(userMap.values());
+        }
+
+        function updateMetricsUI(stats) {
+            document.getElementById('stat-total-tickets').innerText = stats.total_tickets ?? 0;
+            document.getElementById('stat-open-tickets').innerText = stats.open_tickets ?? 0;
+            document.getElementById('stat-progress-tickets').innerText = stats.in_progress_tickets ?? 0;
+            document.getElementById('stat-resolved-tickets').innerText = stats.resolved_tickets ?? 0;
+            document.getElementById('stat-total-users').innerText = stats.total_users ?? 0;
+        }
+
+        function switchView(viewName) {
+            activeView = viewName;
+            const ticketsView = document.getElementById('tickets-view');
+            const usersView = document.getElementById('users-view');
+            const ticketFilterTabs = document.getElementById('ticket-filter-tabs');
+            const heading = document.getElementById('page-heading');
+            const subheading = document.getElementById('page-subheading');
+
+            document.getElementById('view-tickets-btn').classList.toggle('active', viewName === 'tickets');
+            document.getElementById('view-users-btn').classList.toggle('active', viewName === 'users');
+
+            if (viewName === 'tickets') {
+                ticketsView.style.display = 'block';
+                usersView.style.display = 'none';
+                ticketFilterTabs.style.display = 'flex';
+                heading.innerText = 'Support Escalations & Tickets';
+                subheading.innerText = 'Monitor real-time AI escalations, update ticket statuses, and view user chat histories.';
+            } else {
+                ticketsView.style.display = 'none';
+                usersView.style.display = 'block';
+                ticketFilterTabs.style.display = 'none';
+                heading.innerText = 'Customer Profiles & Conversation History';
+                subheading.innerText = 'View every registered customer and open their complete Telegram chat history transcript.';
+            }
+
+            renderActiveView();
+        }
+
+        function filterTickets(status, element) {
+            if (activeView !== 'tickets') switchView('tickets');
+            currentFilter = status;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (element) element.classList.add('active');
+            renderTicketsTable();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('search-box').value.toLowerCase().trim();
+            renderActiveView();
+        }
+
+        function renderActiveView() {
+            if (activeView === 'tickets') {
+                renderTicketsTable();
+            } else {
+                renderUsersTable();
+            }
+        }
+
+        function renderTicketsTable() {
+            const tbody = document.getElementById('tickets-table-body');
+            const emptyState = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            let filtered = allTickets;
+
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(t => t.status === currentFilter);
+            }
+
+            if (searchQuery) {
+                filtered = filtered.filter(t => 
+                    `#${t.id}`.includes(searchQuery) ||
+                    `user #${t.user_id}`.toLowerCase().includes(searchQuery) ||
+                    (t.order_id && t.order_id.toLowerCase().includes(searchQuery)) ||
+                    (t.escalation_reason && t.escalation_reason.toLowerCase().includes(searchQuery)) ||
+                    (t.issue_description && t.issue_description.toLowerCase().includes(searchQuery))
+                );
+            }
+
+            if (filtered.length === 0) {
+                emptyState.style.display = 'block';
+                document.getElementById('empty-state-title').innerText = 'No Tickets Found';
+                document.getElementById('empty-state-desc').innerText = 'There are no support tickets matching your search query or filter.';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            filtered.forEach(ticket => {
+                const tr = document.createElement('tr');
+                const createdDate = new Date(ticket.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+
+                tr.innerHTML = `
+                    <td class="ticket-id">#${ticket.id}</td>
+                    <td>
+                        <div style="font-weight: 600;">User #${ticket.user_id}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-subtle);">Telegram User</div>
+                    </td>
+                    <td>
+                        ${ticket.order_id 
+                            ? `<span class="order-badge">${ticket.order_id}</span>` 
+                            : `<span style="color: var(--text-subtle); font-size: 0.8rem;">N/A</span>`}
+                    </td>
+                    <td>
+                        <div class="escalation-box">
+                            <div class="escalation-reason">${escapeHtml(ticket.escalation_reason || 'Manual Support Ticket')}</div>
+                            <div class="issue-desc" title="${escapeHtml(ticket.issue_description || '')}">
+                                ${escapeHtml(ticket.issue_description || 'No detailed issue text provided.')}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge status-${ticket.status}">
+                            ${ticket.status.replace('_', ' ')}
+                        </span>
+                    </td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted);">${createdDate}</td>
+                    <td>
+                        <div class="action-cell">
+                            <select class="select-status" onchange="updateTicketStatus(${ticket.id}, this.value)">
+                                <option value="open" ${ticket.status === 'open' ? 'selected' : ''}>🔴 Open</option>
+                                <option value="in_progress" ${ticket.status === 'in_progress' ? 'selected' : ''}>🟡 In Progress</option>
+                                <option value="resolved" ${ticket.status === 'resolved' ? 'selected' : ''}>🟢 Resolved</option>
+                            </select>
+                            <button class="action-btn" onclick="openUserHistoryModal(${ticket.user_id}, ${ticket.id})">
+                                💬 View History
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderUsersTable() {
+            const tbody = document.getElementById('users-table-body');
+            const emptyState = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            let filtered = allUsers;
+
+            if (searchQuery) {
+                filtered = filtered.filter(u => 
+                    `user #${u.id}`.toLowerCase().includes(searchQuery) ||
+                    (u.name && u.name.toLowerCase().includes(searchQuery)) ||
+                    String(u.telegram_id).includes(searchQuery)
+                );
+            }
+
+            if (filtered.length === 0) {
+                emptyState.style.display = 'block';
+                document.getElementById('empty-state-title').innerText = 'No Customers Found';
+                document.getElementById('empty-state-desc').innerText = 'There are no registered customers matching your search criteria.';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            filtered.forEach(user => {
+                const tr = document.createElement('tr');
+                const createdDate = new Date(user.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+                const lastActiveDate = new Date(user.last_active_at || user.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+
+                tr.innerHTML = `
+                    <td class="ticket-id">User #${user.id}</td>
+                    <td>
+                        <div style="font-weight: 700; color: #ffffff;">${escapeHtml(user.name || 'Anonymous User')}</div>
+                    </td>
+                    <td>
+                        <span class="order-badge">TG: ${user.telegram_id}</span>
+                    </td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted);">${createdDate}</td>
+                    <td style="font-size: 0.8rem; color: #34d399;">${lastActiveDate}</td>
+                    <td>
+                        <button class="action-btn" style="background: var(--primary-gradient); color: #fff;" onclick="openUserHistoryModal(${user.id}, null, '${escapeHtml(user.name)}')">
+                            💬 Open Full Chat Log
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function updateTicketStatus(ticketId, newStatus) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    const ticket = allTickets.find(t => t.id === ticketId);
+                    if (ticket) ticket.status = newStatus;
+                    renderTicketsTable();
+                    fetchDashboardData();
+                } else {
+                    alert('Failed to update status on server.');
+                }
+            } catch (err) {
+                console.error('Error updating ticket status:', err);
+                alert('Backend unreachable for status update.');
+            }
+        }
+
+        async function openUserHistoryModal(userId, ticketId = null, userName = null) {
+            const overlay = document.getElementById('modal-overlay');
+            const summaryDiv = document.getElementById('modal-user-summary');
+            const chatMessagesDiv = document.getElementById('modal-chat-messages');
+
+            const ticket = ticketId ? allTickets.find(t => t.id === ticketId) : null;
+            const user = allUsers.find(u => u.id === userId);
+            const displayName = userName || (user ? user.name : `Customer #${userId}`);
+
+            if (ticket) {
+                summaryDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="ticket-id">Ticket #${ticket.id} (${displayName})</span>
+                        <span class="status-badge status-${ticket.status}">${ticket.status}</span>
+                    </div>
+                    <div style="font-size: 0.85rem; margin-top: 0.3rem;">
+                        <strong>Escalation:</strong> ${escapeHtml(ticket.escalation_reason || 'N/A')}
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                        <strong>Order Reference:</strong> ${ticket.order_id || 'None'}
+                    </div>
+                `;
+            } else {
+                summaryDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="ticket-id">Customer Profile: ${displayName}</span>
+                        <span class="logo-badge">User #${userId}</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem;">
+                        Telegram ID: <strong>${user ? user.telegram_id : 'N/A'}</strong>
+                    </div>
+                `;
+            }
+
+            chatMessagesDiv.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Loading chat history log...</div>';
+            overlay.classList.add('active');
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/users/${userId}/history`);
+                if (res.ok) {
+                    const data = await res.json();
+                    renderChatMessages(data.messages);
+                } else {
+                    renderMockChatMessages(userId);
+                }
+            } catch (err) {
+                console.warn('Fetching history failed, displaying fallback transcript:', err);
+                renderMockChatMessages(userId);
+            }
+        }
+
+        function renderChatMessages(messages) {
+            const chatMessagesDiv = document.getElementById('modal-chat-messages');
+            if (!messages || messages.length === 0) {
+                chatMessagesDiv.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">No recorded chat history found for this customer.</div>';
+                return;
+            }
+
+            chatMessagesDiv.innerHTML = messages.map(msg => `
+                <div class="chat-bubble ${msg.role}">
+                    <div>${escapeHtml(msg.content)}</div>
+                    <div class="chat-meta">${msg.role === 'user' ? 'Customer' : 'Nivaran AI'} • ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderMockChatMessages(userId) {
+            const mockMessages = [
+                { role: 'user', content: 'Hi, I received my order ORD-88219 today.', created_at: new Date(Date.now() - 1200000).toISOString() },
+                { role: 'assistant', content: 'Hello! I can help you with your order. What issue are you experiencing?', created_at: new Date(Date.now() - 1100000).toISOString() },
+                { role: 'user', content: 'i get the smart watch but it is not working ? and i think it is dammaged', created_at: new Date(Date.now() - 1000000).toISOString() },
+                { role: 'assistant', content: 'I am so sorry to hear that. I have immediately logged a support ticket for our human customer team to assist you.', created_at: new Date(Date.now() - 900000).toISOString() }
+            ];
+            renderChatMessages(mockMessages);
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+
+        function closeModalOnOverlay(e) {
+            if (e.target.id === 'modal-overlay') {
+                closeModal();
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>

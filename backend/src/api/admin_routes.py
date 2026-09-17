@@ -135,6 +135,20 @@ async def update_ticket_status(
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Ticket #{ticket_id} not found")
 
 
+@router.get("/users", response_model=List[User], summary="List all registered customers")
+async def list_users():
+    """Retrieves all registered Telegram users from database."""
+    try:
+        supabase = get_supabase_client()
+        res = supabase.table("users").select("*").order("last_active_at", desc=True).execute()
+        if res.data:
+            return res.data
+    except Exception as e:
+        logger.warning(f"Database query failed for users list, returning mock fallback: {e}")
+
+    return MOCK_USERS
+
+
 @router.get("/users/{user_id}/history", response_model=UserHistoryResponse, summary="Get full user chat history")
 async def get_user_chat_history(user_id: int = Path(..., description="ID of user")):
     """Retrieves a user's full conversation history and profile information."""

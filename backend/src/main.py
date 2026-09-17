@@ -80,6 +80,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+from fastapi.staticfiles import StaticFiles
+
 # Enable CORS for Frontend Admin Panel development
 app.add_middleware(
     CORSMiddleware,
@@ -91,6 +93,14 @@ app.add_middleware(
 
 # Mount Admin REST API Routes
 app.include_router(admin_router)
+
+# Mount Static Frontends (Admin Panel & E-Commerce Storefront)
+frontend_dir = os.path.abspath(os.path.join(backend_dir, "..", "frontend"))
+if os.path.exists(os.path.join(frontend_dir, "admin")):
+    app.mount("/admin", StaticFiles(directory=os.path.join(frontend_dir, "admin"), html=True), name="admin")
+if os.path.exists(os.path.join(frontend_dir, "store")):
+    app.mount("/store", StaticFiles(directory=os.path.join(frontend_dir, "store"), html=True), name="store")
+
 
 
 @app.get("/", tags=["Health Check"])
