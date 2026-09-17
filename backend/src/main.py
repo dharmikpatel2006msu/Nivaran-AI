@@ -100,8 +100,11 @@ app.include_router(store_router)
 frontend_dir = os.path.abspath(os.path.join(backend_dir, "..", "frontend"))
 if os.path.exists(os.path.join(frontend_dir, "admin")):
     app.mount("/admin", StaticFiles(directory=os.path.join(frontend_dir, "admin"), html=True), name="admin")
-if os.path.exists(os.path.join(frontend_dir, "store")):
-    app.mount("/store", StaticFiles(directory=os.path.join(frontend_dir, "store"), html=True), name="store")
+
+store_dir = os.path.join(frontend_dir, "src", "store") if os.path.exists(os.path.join(frontend_dir, "src", "store")) else os.path.join(frontend_dir, "store")
+if os.path.exists(store_dir):
+    app.mount("/store", StaticFiles(directory=store_dir, html=True), name="store")
+
 
 
 

@@ -4,6 +4,8 @@ Ported from Node.js prototype (`index.js` lines 48-135).
 Uses python-telegram-bot async application runner in long polling mode.
 """
 
+import re
+import html
 import logging
 import asyncio
 from typing import Optional
@@ -19,19 +21,41 @@ logger = logging.getLogger(__name__)
 _telegram_app: Optional[Application] = None
 
 
+def convert_markdown_to_telegram_html(text: str) -> str:
+    """Converts standard LLM Markdown syntax into clean Telegram HTML entities.
+    
+    Transforms **word** -> <b>word</b> so words are highlighted in Telegram without showing raw ** asterisks.
+    """
+    if not text:
+        return ""
+
+    # Convert **bold** or __bold__ to <b>bold</b>
+    formatted = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
+    formatted = re.sub(r'__(.*?)__', r'<b>\1</b>', formatted, flags=re.DOTALL)
+
+    # Convert `code` to <code>code</code>
+    formatted = re.sub(r'`(.*?)`', r'<code>\1</code>', formatted)
+
+    return formatted
+
+
 async def safe_reply_markdown(update: Update, text: str) -> None:
-    """Sends a Telegram message with Markdown formatting enabled for **bold**, *italic*, lists, and code.
+    """Sends a Telegram message with HTML/Markdown entities enabled for highlighted bold words.
 
     Falls back to plain text if Telegram API fails to parse entities.
     """
     if not update.message or not text:
         return
 
+    formatted_html = convert_markdown_to_telegram_html(text)
+
     try:
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        # Primary: Send with HTML formatting enabled so <b>word</b> is highlighted in Telegram
+        await update.message.reply_text(formatted_html, parse_mode=ParseMode.HTML)
     except Exception as e:
-        logger.warning(f"⚠️ Telegram Markdown parsing fallback triggered ({e}), sending plain text response.")
-        await update.message.reply_text(text)
+        logger.warning(f"⚠️ Telegram HTML parsing fallback triggered ({e}), sending plain text response.")
+        clean_text = text.replace("**", "").replace("__", "")
+        await update.message.reply_text(clean_text)
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -91,7 +115,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     Ported from `index.js` lines 57-131:
     - Extracts sender info and text.
     - Delegates processing to `process_incoming_message`.
-    - Sends response reply to Telegram user with Markdown formatting.
+    - Sends response reply to Telegram user with HTML highlighted bold words.
     """
     if not update.message or not update.message.text:
         return
@@ -125,7 +149,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "shipping options, return policies, or store hours. How can I assist you?"
             )
 
-        logger.info(f"📤 Sending Telegram reply to {display_name} with Markdown formatting...")
+        logger.info(f"📤 Sending Telegram reply to {display_name} with highlighted bold words...")
         await safe_reply_markdown(update, reply_text)
         logger.info("✅ Telegram reply sent successfully.")
     except Exception as e:
