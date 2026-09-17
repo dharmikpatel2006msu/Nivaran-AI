@@ -63,16 +63,14 @@ Customers relocating or shipping gifts to a different city can change the delive
 
 ## Contact Us & Support Channels
 
-<!-- category: company_basics | subtopic: contact_channels | escalate: false | keywords: contact us, customer care number, support email, how to reach shopnest, talk to a human -->
+<!-- category: company_basics | subtopic: contact_channels | escalate: false | keywords: contact us, customer care number, support email, how to reach shopnest, telegram bot, support bot, customer care support button -->
 
-Customers can reach ShopNest support through several channels: the **in-app/website chat** (fastest for most queries), **email** at support@shopnest.example, and **phone** at the toll-free number listed under **Account > Help > Contact Us** in the app (the number is not published in this document since it is region-specific and subject to change; the app always shows the current active number). ShopNest is also active on social media for general brand engagement, but **order-specific or account-specific issues should not be raised via public social media comments or DMs**, since agents there cannot verify account identity as securely as in-app channels can.
+Customer support for our project is provided via our official Telegram bot. Our platform consists of a single webpage containing a **Customer Care Support** button. Clicking on this button directly redirects the user to our Telegram support bot page at [https://t.me/NivaranAiSupportBot](https://t.me/NivaranAiSupportBot).
 
-For most queries — order status, returns, refunds, account issues — the chatbot or live chat can resolve things directly or route to the right team without needing a phone call. Phone support is best reserved for urgent, time-sensitive issues (e.g., a same-day delivery problem) or for customers who are unable to use the app/website.
+All customer support inquiries and assistance are handled through this Telegram bot channel.
 
-If a customer explicitly asks to speak with a human agent instead of the chatbot, this request should be honored by routing to live chat/support queue rather than continuing to attempt automated resolution, particularly if the customer has already expressed frustration with automated responses.
-
-**Sample customer question:** "How can I actually talk to a real person instead of a bot?"
-**Sample answer:** "Of course — I can connect you with a live support agent through chat right now, or you're welcome to call our support line, which you'll find under Account > Help > Contact Us in the app. Just let me know which you'd prefer."
+**Sample customer question:** "How can I contact customer care support or reach the bot?"
+**Sample answer:** "You can reach our customer support by clicking the 'Customer Care Support' button on our webpage, which will direct you to our official Telegram bot at https://t.me/NivaranAiSupportBot."
 
 ---
 
