@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopNest Store | Nivaran AI E-Commerce</title>
+  <meta name="description" content="Customer-facing store catalog powered by Nivaran AI FastAPI backend and PostgreSQL vector database.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="store.css">
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <a href="#" class="brand-logo">
+        🛍️ ShopNest
+        <span class="brand-badge">Nivaran AI</span>
+      </a>
+      <div class="header-actions">
+        <button class="cart-icon-btn" onclick="openCartDrawer()" title="View Cart" id="header-cart-btn">
+          🛒
+          <span class="cart-badge" id="header-cart-badge">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <section class="hero-banner">
+      <span class="hero-tag">Official Storefront</span>
+      <h1 class="hero-title">Explore Premium Tech & Gear</h1>
+      <p class="hero-sub">Browse available items, add products to your cart, and place orders directly with live inventory validation.</p>
+    </section>
+
+    <!-- Product Listing Storefront Grid -->
+    <section class="products-section">
+      <div class="products-section-header">
+        <h2 class="section-title">All Products</h2>
+      </div>
+      <div class="products-grid" id="products-grid">
+        <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+          <div class="spinner" style="border-top-color: var(--primary);"></div>
+          <p style="margin-top: 1rem; color: var(--text-muted);">Loading products catalog...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Overlay Backdrop for Modals & Drawers -->
+  <div class="overlay-backdrop" id="overlay-backdrop" onclick="closeAllOverlays()">
+    
+    <!-- 1. Slide-in Cart Drawer -->
+    <aside class="drawer-cart" onclick="event.stopPropagation()">
+      <div class="drawer-header">
+        <h3 class="drawer-title">Shopping Cart</h3>
+        <button class="btn-close" onclick="closeCartDrawer()" title="Close Cart">✕</button>
+      </div>
+      <div class="drawer-body" id="cart-drawer-body">
+        <div class="cart-empty-state">
+          <div class="empty-icon">🛒</div>
+          <h3>Your Cart is Empty</h3>
+          <p style="font-size: 0.9rem;">Browse our store items and add products to your cart!</p>
+        </div>
+      </div>
+      <div class="drawer-footer" id="cart-drawer-footer" style="display: none;">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span id="cart-subtotal" style="color: var(--primary);">$0.00</span>
+        </div>
+        <button class="btn btn-primary" id="cart-checkout-btn" onclick="openCheckoutModal()">
+          Proceed to Checkout
+        </button>
+      </div>
+    </aside>
+
+    <!-- 2. Product Detail Modal -->
+    <div class="modal-box" id="modal-detail" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+        <span class="stock-badge in-stock" id="detail-stock-badge">In Stock</span>
+        <button class="btn-close" onclick="closeOverlay('modal-detail')">✕</button>
+      </div>
+      <img id="detail-img" src="" alt="Product Detail" class="product-detail-hero" />
+      <h3 class="modal-title" id="detail-name">Product Title</h3>
+      <div class="modal-price-bar">
+        <span class="modal-price" id="detail-price">$0.00</span>
+      </div>
+      <p class="modal-desc" id="detail-desc">Product description goes here.</p>
+      
+      <!-- Quantity Stepper -->
+      <div class="detail-stepper-wrap">
+        <span style="font-weight: 700; font-size: 0.95rem;">Quantity</span>
+        <div class="stepper-lg">
+          <button class="stepper-lg-btn" id="btn-qty-minus" onclick="stepDetailQuantity(-1)">-</button>
+          <span class="stepper-lg-val" id="detail-qty-val">1</span>
+          <button class="stepper-lg-btn" id="btn-qty-plus" onclick="stepDetailQuantity(1)">+</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="detail-add-btn" onclick="addDetailItemToCart()">
+        Add to Cart
+      </button>
+    </div>
+
+    <!-- 3. Checkout Form Modal -->
+    <div class="modal-box" id="modal-checkout" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h3 class="modal-title" style="margin-bottom: 0;">Checkout Details</h3>
+        <button class="btn-close" onclick="closeOverlay('modal-checkout')">✕</button>
+      </div>
+
+      <form id="checkout-form" onsubmit="event.preventDefault(); submitCheckoutOrder();">
+        <div class="form-group">
+          <label class="form-label" for="cust-name">Full Name *</label>
+          <input type="text" id="cust-name" class="form-input" placeholder="e.g. Alice Smith" />
+          <div class="invalid-feedback">Please enter your full name.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cust-address">Shipping Address *</label>
+          <input type="text" id="cust-address" class="form-input" placeholder="e.g. 123 Main Street, City, Country" />
+          <div class="invalid-feedback">Please enter a valid shipping address.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cust-email">Email Address *</label>
+          <input type="email" id="cust-email" class="form-input" placeholder="e.g. alice@example.com" />
+          <div class="invalid-feedback">Please enter a valid email address.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cust-phone">Phone Number *</label>
+          <input type="tel" id="cust-phone" class="form-input" placeholder="e.g. +1 555-0192" />
+          <div class="invalid-feedback">Please enter a valid contact phone number.</div>
+        </div>
+
+        <div class="summary-row" style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+          <span>Total Payable</span>
+          <span id="checkout-total-display" style="color: var(--primary);">$0.00</span>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeOverlay('modal-checkout')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-order">Place Order</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 4. Order Confirmation Modal -->
+    <div class="modal-box" id="modal-success" style="text-align: center;" onclick="event.stopPropagation()">
+      <div class="success-badge-icon">✓</div>
+      <h3 class="modal-title" style="font-size: 1.5rem;">Your Order Has Been Placed!</h3>
+      <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Thank you for shopping with us.</p>
+      
+      <div class="order-chip" id="confirm-order-id">#ORD-XXXXX</div>
+
+      <div style="background: var(--bg-surface-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; text-align: left; font-size: 0.9rem; border: 1px solid var(--border);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+          <span style="color: var(--text-muted);">Customer:</span>
+          <strong id="confirm-customer-name" style="color: var(--text-primary);">Alice Smith</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+          <span style="color: var(--text-muted);">Email:</span>
+          <span id="confirm-email">alice@example.com</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Amount Paid:</span>
+          <strong id="confirm-total" style="color: var(--primary); font-size: 1rem;">$0.00</strong>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="closeOverlay('modal-success')">Continue Shopping</button>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation Bar for Mobile -->
+  <nav class="bottom-nav">
+    <a href="#" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">🛍️</span>
+      <span>Products</span>
+    </a>
+    <button class="bottom-nav-item" onclick="openCartDrawer()">
+      <span class="bottom-nav-icon">🛒</span>
+      <span>Cart</span>
+      <span class="cart-badge" id="nav-cart-badge" style="position: absolute; top: 2px; right: 28%; font-size: 0.65rem; min-width: 16px; height: 16px;">0</span>
+    </button>
+    <a href="#" class="bottom-nav-item" onclick="alert('For customer support, send a message to our Nivaran AI Telegram Bot!')">
+      <span class="bottom-nav-icon">💬</span>
+      <span>Support</span>
+    </a>
+  </nav>
+
+  <script src="store.js"></script>
+</body>
+</html>
