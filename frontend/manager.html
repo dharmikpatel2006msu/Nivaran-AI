@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nivaran AI | Manager Dashboard (Orders & Inventory)</title>
+    <!-- Modern Typography & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root, html[data-theme="light"] {
+            --bg-body: #f8fafc;
+            --bg-sidebar: #ffffff;
+            --bg-surface: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f1f5f9;
+            --bg-control: #f1f5f9;
+            --border-color: #e2e8f0;
+            --border-highlight: rgba(99, 102, 241, 0.4);
+
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-glow: rgba(79, 70, 229, 0.2);
+            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-subtle: #94a3b8;
+
+            --status-booked-bg: rgba(59, 130, 246, 0.1);
+            --status-booked-text: #2563eb;
+            --status-booked-border: rgba(59, 130, 246, 0.25);
+
+            --status-shipped-bg: rgba(245, 158, 11, 0.12);
+            --status-shipped-text: #d97706;
+            --status-shipped-border: rgba(245, 158, 11, 0.3);
+
+            --status-delivery-bg: rgba(139, 92, 246, 0.12);
+            --status-delivery-text: #7c3aed;
+            --status-delivery-border: rgba(139, 92, 246, 0.3);
+
+            --status-delivered-bg: rgba(16, 185, 129, 0.12);
+            --status-delivered-text: #059669;
+            --status-delivered-border: rgba(16, 185, 129, 0.3);
+
+            --status-returned-bg: rgba(239, 68, 68, 0.1);
+            --status-returned-text: #dc2626;
+            --status-returned-border: rgba(239, 68, 68, 0.25);
+
+            --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.05);
+            --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        html[data-theme="dark"] {
+            --bg-body: #0b0f19;
+            --bg-sidebar: #111827;
+            --bg-surface: #111827;
+            --bg-card: #1f2937;
+            --bg-card-hover: #283548;
+            --bg-control: #1a2234;
+            --border-color: #374151;
+            --border-highlight: rgba(129, 140, 248, 0.4);
+
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --primary-glow: rgba(99, 102, 241, 0.3);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --text-subtle: #6b7280;
+
+            --status-booked-bg: rgba(59, 130, 246, 0.2);
+            --status-booked-text: #60a5fa;
+            --status-booked-border: rgba(59, 130, 246, 0.4);
+
+            --status-shipped-bg: rgba(245, 158, 11, 0.2);
+            --status-shipped-text: #fbbf24;
+            --status-shipped-border: rgba(245, 158, 11, 0.4);
+
+            --status-delivery-bg: rgba(139, 92, 246, 0.2);
+            --status-delivery-text: #a78bfa;
+            --status-delivery-border: rgba(139, 92, 246, 0.4);
+
+            --status-delivered-bg: rgba(16, 185, 129, 0.2);
+            --status-delivered-text: #34d399;
+            --status-delivered-border: rgba(16, 185, 129, 0.4);
+
+            --status-returned-bg: rgba(239, 68, 68, 0.2);
+            --status-returned-text: #f87171;
+            --status-returned-border: rgba(239, 68, 68, 0.4);
+
+            --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.4);
+            --shadow-modal: 0 25px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        /* App Layout Container */
+        .app-layout {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 270px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            z-index: 40;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-brand {
+            padding: 1.5rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            background: var(--primary-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .brand-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .brand-badge {
+            font-size: 0.65rem;
+            background: var(--primary-glow);
+            color: var(--primary);
+            padding: 0.15rem 0.5rem;
+            border-radius: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .sidebar-menu {
+            padding: 1.25rem 0.75rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .menu-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-subtle);
+            padding: 0.6rem 0.75rem 0.35rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.7rem 0.85rem;
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--text-main);
+            background: var(--bg-card-hover);
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--border-highlight);
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        /* Main Content Workspace */
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow-x: hidden;
+        }
+
+        /* Top Header */
+        .topbar {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .topbar-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* Buttons & Controls */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: #ffffff;
+            box-shadow: 0 2px 10px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-control);
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-highlight);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #dc2626;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            color: #ffffff;
+        }
+
+        /* Main Workspace Scroll Body */
+        .workspace-body {
+            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Metric Cards Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.35rem 1.5rem;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-highlight);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .metric-val {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+        }
+
+        .metric-sub {
+            font-size: 0.8rem;
+            color: var(--text-subtle);
+        }
+
+        /* Section Cards */
+        .content-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .card-title-wrap h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .card-title-wrap p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+
+        /* Controls Toolbar */
+        .controls-toolbar {
+            padding: 1rem 1.5rem;
+            background: var(--bg-control);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .search-wrap {
+            position: relative;
+            flex: 1;
+            max-width: 360px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 1rem 0.55rem 2.4rem;
+            color: var(--text-main);
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-select {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.55rem 0.85rem;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Table Styling */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--bg-control);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            color: var(--text-main);
+        }
+
+        tbody tr:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .order-id-badge {
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--primary);
+            background: rgba(99, 102, 241, 0.08);
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-highlight);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: capitalize;
+            letter-spacing: 0.02em;
+            border: 1px solid transparent;
+        }
+
+        .status-badge.Booked {
+            background: var(--status-booked-bg);
+            color: var(--status-booked-text);
+            border-color: var(--status-booked-border);
+        }
+
+        .status-badge.Shipped {
+            background: var(--status-shipped-bg);
+            color: var(--status-shipped-text);
+            border-color: var(--status-shipped-border);
+        }
+
+        .status-badge.Out-for-Delivery {
+            background: var(--status-delivery-bg);
+            color: var(--status-delivery-text);
+            border-color: var(--status-delivery-border);
+        }
+
+        .status-badge.Delivered {
+            background: var(--status-delivered-bg);
+            color: var(--status-delivered-text);
+            border-color: var(--status-delivered-border);
+        }
+
+        .status-badge.Returned {
+            background: var(--status-returned-bg);
+            color: var(--status-returned-text);
+            border-color: var(--status-returned-border);
+        }
+
+        .status-dropdown {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.4rem 0.65rem;
+            font-size: 0.825rem;
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .status-dropdown:focus {
+            border-color: var(--primary);
+        }
+
+        .status-dropdown:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            background: var(--bg-card);
+            border-style: dashed;
+        }
+
+        .status-dropdown option:disabled {
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Empty & Loading States */
+        .state-container {
+            padding: 3.5rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .state-icon {
+            font-size: 2.75rem;
+            opacity: 0.6;
+        }
+
+        .spinner {
+            width: 34px;
+            height: 34px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Modal Dialog */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            width: 90%;
+            max-width: 520px;
+            box-shadow: var(--shadow-modal);
+            padding: 1.75rem;
+            transform: scale(0.95);
+            transition: transform 0.25s ease;
+        }
+
+        .modal-backdrop.active .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-header h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .modal-close-btn {
+            background: transparent;
+            border: none;
+            font-size: 1.35rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .modal-close-btn:hover {
+            color: var(--text-main);
+        }
+
+        .form-group {
+            margin-bottom: 1.15rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            background: var(--bg-control);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.65rem 0.85rem;
+            color: var(--text-main);
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--primary);
+            background: var(--bg-surface);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 200;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--bg-surface);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.85rem 1.25rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            pointer-events: auto;
+            animation: slideIn 0.3s ease forwards;
+            min-width: 280px;
+        }
+
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 900px) {
+            .app-layout { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; position: static; }
+            .workspace-body { padding: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">N</div>
+                <div>
+                    <div class="brand-title">Nivaran AI</div>
+                    <span class="brand-badge">Manager Portal</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <div class="menu-label">Main Navigation</div>
+                <a class="nav-link active" id="nav-overview" onclick="switchSection('overview')">
+                    📊 <span>Dashboard Overview</span>
+                </a>
+                <a class="nav-link" id="nav-orders" onclick="switchSection('orders')">
+                    📦 <span>Order Management</span>
+                </a>
+                <a class="nav-link" id="nav-inventory" onclick="switchSection('inventory')">
+                    🏷️ <span>Inventory Catalog</span>
+                </a>
+
+                <div class="menu-label" style="margin-top: 1rem;">System Portals</div>
+                <a href="/admin/index.html" class="nav-link" title="Open Support Ticket Escalations Panel">
+                    🎫 <span>Support Escalations</span>
+                </a>
+                <a href="/store.html" target="_blank" class="nav-link" title="Open ShopNest Customer Storefront">
+                    🛍️ <span>Live Storefront ↗</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary" onclick="toggleTheme()" id="theme-btn" style="width: 100%; justify-content: center;">
+                    ☀️ Toggle Theme
+                </button>
+                <button class="btn btn-secondary" onclick="openKeyModal()" style="width: 100%; justify-content: center; font-size: 0.8rem;">
+                    🔑 Admin API Key
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="topbar-title" id="page-title">Operations & Management Dashboard</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-secondary" onclick="refreshCurrentSection()">
+                        🔄 Refresh
+                    </button>
+                    <button class="btn btn-primary" onclick="openAddProductModal()">
+                        ➕ Add Product
+                    </button>
+                </div>
+            </header>
+
+            <div class="workspace-body">
+                <!-- Live KPI Metrics Overview Grid -->
+                <section class="metrics-grid">
+                    <div class="metric-card" onclick="switchSection('orders')">
+                        <span class="metric-label">Total Orders</span>
+                        <div class="metric-val" id="kpi-total-orders">--</div>
+                        <span class="metric-sub">All historical database records</span>
+                    </div>
+
+                    <div class="metric-card" onclick="switchSection('orders'); filterOrdersByStatus('active');">
+                        <span class="metric-label">Active Orders</span>
+                        <div class="metric-val" style="color: var(--primary);" id="kpi-active-orders">--</div>
+                        <span class="metric-sub">Booked, Shipped & Out for Delivery</span>
+                    </div>
+
+                    <div class="metric-card" onclick="switchSection('inventory')">
+                        <span class="metric-label">Total Products</span>
+                        <div class="metric-val" id="kpi-total-products">--</div>
+                        <span class="metric-sub">Active & archived catalog items</span>
+                    </div>
+
+                    <div class="metric-card" onclick="switchSection('inventory')">
+                        <span class="metric-label">Active For Sale</span>
+                        <div class="metric-val" style="color: #10b981;" id="kpi-active-products">--</div>
+                        <span class="metric-sub">Visible to storefront customers</span>
+                    </div>
+                </section>
+
+                <!-- SECTION 1: ORDER MANAGEMENT -->
+                <section class="content-card" id="section-orders">
+                    <div class="card-header">
+                        <div class="card-title-wrap">
+                            <h2>Customer Order Lifecycle Management</h2>
+                            <p>Track real-time order status, manage transitions, and synchronize with Telegram Chatbot tracking.</p>
+                        </div>
+                    </div>
+
+                    <div class="controls-toolbar">
+                        <div class="search-wrap">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" class="search-input" id="order-search" placeholder="Search by Order ID, Customer, or Product..." oninput="handleOrderFilter()">
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="order-status-filter" style="font-size: 0.85rem; font-weight: 600;">Status:</label>
+                            <select id="order-status-filter" class="filter-select" onchange="handleOrderFilter()">
+                                <option value="ALL">All Statuses</option>
+                                <option value="Booked">Booked</option>
+                                <option value="Shipped">Shipped</option>
+                                <option value="Out for Delivery">Out for Delivery</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Returned">Returned</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer Name</th>
+                                    <th>Product Name</th>
+                                    <th>Quantity</th>
+                                    <th>Total ($)</th>
+                                    <th>Current Status</th>
+                                    <th>Order Date</th>
+                                    <th>Update Status Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orders-tbody">
+                                <tr>
+                                    <td colspan="8">
+                                        <div class="state-container">
+                                            <div class="spinner"></div>
+                                            <p>Fetching real orders from PostgreSQL...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SECTION 2: INVENTORY MANAGEMENT -->
+                <section class="content-card" id="section-inventory">
+                    <div class="card-header">
+                        <div class="card-title-wrap">
+                            <h2>Storefront Product Catalog & Inventory</h2>
+                            <p>Live inventory items synced to PostgreSQL and customer storefront.</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openAddProductModal()">
+                            ➕ New Product
+                        </button>
+                    </div>
+
+                    <div class="controls-toolbar">
+                        <div class="search-wrap">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" class="search-input" id="inventory-search" placeholder="Search products by title or description..." oninput="handleInventoryFilter()">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Product Name</th>
+                                    <th>Unit Price</th>
+                                    <th>Stock</th>
+                                    <th>Description</th>
+                                    <th>Storefront Availability</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-tbody">
+                                <tr>
+                                    <td colspan="7">
+                                        <div class="state-container">
+                                            <div class="spinner"></div>
+                                            <p>Loading inventory from database...</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL 1: ADD PRODUCT -->
+    <div class="modal-backdrop" id="modal-add-product" onclick="closeModal('modal-add-product')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Add New Product</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-add-product')">✕</button>
+            </div>
+            <form id="add-product-form" onsubmit="event.preventDefault(); submitAddProduct();">
+                <div class="form-group">
+                    <label class="form-label" for="prod-name">Product Name *</label>
+                    <input type="text" id="prod-name" class="form-input" placeholder="e.g. Wireless Noise-Cancelling Headphones" required />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="prod-price">Price ($) *</label>
+                    <input type="number" id="prod-price" step="0.01" min="0.01" class="form-input" placeholder="e.g. 149.99" required />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="prod-stock">Initial Stock Quantity</label>
+                    <input type="number" id="prod-stock" min="0" value="10" class="form-input" placeholder="10" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="prod-desc">Description</label>
+                    <textarea id="prod-desc" class="form-textarea" placeholder="Detailed product specifications and benefits..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Image</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem;">
+                        <input type="file" id="prod-img-file" class="form-input" accept="image/*" onchange="handleProductImageUpload(event)" style="padding: 0.4rem;" />
+                    </div>
+                    <input type="text" id="prod-img" class="form-input" placeholder="Or enter URL e.g. /uploads/earbuds.jpg" oninput="updateImagePreview(this.value)" />
+                    <div id="prod-img-preview-container" style="display: none; margin-top: 0.5rem; align-items: center; gap: 0.75rem;">
+                        <img id="prod-img-preview" src="" alt="Preview" style="width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border);" onerror="this.onerror=null; this.src='/uploads/earbuds.jpg';" />
+                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="prod-img-preview-status">Image preview</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-product')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-product">Create Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: CONFIRM DEACTIVATION / DELETION -->
+    <div class="modal-backdrop" id="modal-confirm-delete" onclick="closeModal('modal-confirm-delete')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 style="color: #dc2626;">Confirm Product Deactivation</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-confirm-delete')">✕</button>
+            </div>
+            <p style="margin-bottom: 1.25rem; line-height: 1.5; color: var(--text-muted);">
+                Are you sure you want to deactivate <strong id="delete-prod-title" style="color: var(--text-main);">this product</strong>?
+                <br><br>
+                This will safely remove it from the customer storefront while <strong>preserving all past order history</strong> and customer receipts.
+            </p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-confirm-delete')">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-delete" onclick="executeDeleteProduct()">Deactivate Product</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: ADMIN API KEY CONFIGURATION -->
+    <div class="modal-backdrop" id="modal-api-key" onclick="closeModal('modal-api-key')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Admin Security Key</h3>
+                <button class="modal-close-btn" onclick="closeModal('modal-api-key')">✕</button>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                If your backend has <code>ADMIN_API_KEY</code> configured, enter it below to authenticate administrative write and read requests.
+            </p>
+            <div class="form-group">
+                <label class="form-label" for="admin-key-input">X-Admin-API-Key</label>
+                <input type="password" id="admin-key-input" class="form-input" placeholder="Enter secret API key..." />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-api-key')">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveAdminKey()">Save Key</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // State variables
+        let ordersData = [];
+        let inventoryData = [];
+        let deletingProductId = null;
+        let adminApiKey = localStorage.getItem('nivaran_admin_key') || '';
+
+        // Allowed statuses strictly per Phase 2 C requirements
+        const ALLOWED_STATUSES = [
+            "Booked",
+            "Shipped",
+            "Out for Delivery",
+            "Delivered",
+            "Returned"
+        ];
+
+        // Allowed sequential lifecycle status transitions
+        const ALLOWED_STATUS_TRANSITIONS = {
+            'Booked': ['Shipped', 'Returned'],
+            'Shipped': ['Out for Delivery', 'Returned'],
+            'Out for Delivery': ['Delivered', 'Returned'],
+            'Delivered': ['Returned'],
+            'Returned': []
+        };
+
+        // Safe HTML text escaping
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Headers helper with admin key
+        function getApiHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            if (adminApiKey) {
+                headers['X-Admin-API-Key'] = adminApiKey;
+            }
+            return headers;
+        }
+
+        // Show Toast Feedback
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? '✅' : '❌';
+            toast.innerHTML = `<span>${icon}</span> <span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('nivaran_theme', next);
+            document.getElementById('theme-btn').innerText = next === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        }
+
+        // Section Switcher
+        function switchSection(section) {
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            if (section === 'overview') {
+                document.getElementById('nav-overview').classList.add('active');
+                document.getElementById('section-orders').scrollIntoView({ behavior: 'smooth' });
+            } else if (section === 'orders') {
+                document.getElementById('nav-orders').classList.add('active');
+                document.getElementById('section-orders').scrollIntoView({ behavior: 'smooth' });
+            } else if (section === 'inventory') {
+                document.getElementById('nav-inventory').classList.add('active');
+                document.getElementById('section-inventory').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Modals
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function openAddProductModal() {
+            document.getElementById('add-product-form').reset();
+            openModal('modal-add-product');
+        }
+
+        function openKeyModal() {
+            document.getElementById('admin-key-input').value = adminApiKey;
+            openModal('modal-api-key');
+        }
+
+        function saveAdminKey() {
+            adminApiKey = document.getElementById('admin-key-input').value.trim();
+            localStorage.setItem('nivaran_admin_key', adminApiKey);
+            closeModal('modal-api-key');
+            showToast('Admin API key saved');
+            fetchDashboardMetrics();
+            fetchOrders();
+            fetchInventory();
+        }
+
+        // Fetch Overview KPI Metrics
+        async function fetchDashboardMetrics() {
+            try {
+                const res = await fetch('/api/admin/manager-stats', { headers: getApiHeaders() });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const stats = await res.json();
+                document.getElementById('kpi-total-orders').innerText = stats.total_orders;
+                document.getElementById('kpi-active-orders').innerText = stats.active_orders;
+                document.getElementById('kpi-total-products').innerText = stats.total_products;
+                document.getElementById('kpi-active-products').innerText = stats.active_products;
+            } catch (err) {
+                console.error('Failed to load metrics:', err);
+            }
+        }
+
+        // Fetch Orders
+        async function fetchOrders() {
+            const tbody = document.getElementById('orders-tbody');
+            try {
+                const res = await fetch('/api/admin/orders', { headers: getApiHeaders() });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                ordersData = await res.json();
+                renderOrdersTable(ordersData);
+            } catch (err) {
+                console.error('Failed to load orders:', err);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8">
+                            <div class="state-container">
+                                <div class="state-icon">⚠️</div>
+                                <h3 style="color: var(--text-main);">Error Loading Orders</h3>
+                                <p>Failed to retrieve orders from backend: ${escapeHtml(err.message)}</p>
+                                <button class="btn btn-secondary" onclick="fetchOrders()">🔄 Retry</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Render Orders Table
+        function renderOrdersTable(orders) {
+            const tbody = document.getElementById('orders-tbody');
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8">
+                            <div class="state-container">
+                                <div class="state-icon">📭</div>
+                                <h3 style="color: var(--text-main);">No Orders Found</h3>
+                                <p>No orders match the current filter criteria or exist in the database.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = orders.map(o => {
+                const orderId = escapeHtml(o.order_id);
+                const custName = escapeHtml(o.customer_name || 'Guest Customer');
+                const custEmail = escapeHtml(o.customer_email || '');
+                const emailLine = custEmail ? `<br><small style="color: var(--text-muted); font-size: 0.75rem;">✉️ ${custEmail}</small>` : '';
+                const prodName = escapeHtml(o.product_name || 'Item');
+                const qty = o.quantity || 1;
+                const total = o.total !== null && o.total !== undefined ? `$${parseFloat(o.total).toFixed(2)}` : '--';
+                const currentStatus = o.status || 'Booked';
+                const createdDate = o.created_at ? o.created_at.substring(0, 10) : '--';
+                const statusClass = currentStatus.replace(/\s+/g, '-');
+                const isTerminal = (currentStatus.toLowerCase() === 'returned');
+                const allowedNext = ALLOWED_STATUS_TRANSITIONS[currentStatus] || [];
+
+                // Build status dropdown options with strict sequential constraints
+                const optionsHtml = ALLOWED_STATUSES.map(st => {
+                    const isCurrent = (st.toLowerCase() === currentStatus.toLowerCase());
+                    const isAllowed = isCurrent || allowedNext.includes(st);
+                    const disabledAttr = (!isAllowed || isTerminal) && !isCurrent ? 'disabled' : '';
+                    const selectedAttr = isCurrent ? 'selected' : '';
+                    return `<option value="${st}" ${selectedAttr} ${disabledAttr}>${st}</option>`;
+                }).join('');
+
+                const selectDisabledAttr = isTerminal ? 'disabled title="Order Returned — status is locked"' : '';
+
+                return `
+                    <tr id="row-order-${orderId}">
+                        <td><span class="order-id-badge">#${orderId}</span></td>
+                        <td><strong>${custName}</strong>${emailLine}</td>
+                        <td>${prodName}</td>
+                        <td>${qty}</td>
+                        <td>${total}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}" id="badge-${orderId}">
+                                ${escapeHtml(currentStatus)}
+                            </span>
+                        </td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">${createdDate}</td>
+                        <td>
+                            <select class="status-dropdown" onchange="updateOrderStatus('${orderId}', this.value)" id="select-${orderId}" ${selectDisabledAttr}>
+                                ${optionsHtml}
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Update Order Status via PATCH /api/admin/orders/{order_id}/status
+        async function updateOrderStatus(orderId, newStatus) {
+            const dropdown = document.getElementById(`select-${orderId}`);
+            const badge = document.getElementById(`badge-${orderId}`);
+            const prevStatus = badge ? badge.innerText.trim() : '';
+
+            if (dropdown) dropdown.disabled = true;
+
+            try {
+                const res = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
+                    method: 'PATCH',
+                    headers: getApiHeaders(),
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (!res.ok) {
+                    const errJson = await res.json().catch(() => ({}));
+                    throw new Error(errJson.detail || `Server returned ${res.status}`);
+                }
+
+                const updatedOrder = await res.json();
+                
+                // Construct informative feedback toast with customer email confirmation
+                let toastMsg = `Order #${orderId} status updated to "${newStatus}".`;
+                const targetEmail = updatedOrder.customer_email || (ordersData.find(o => o.order_id === orderId) || {}).customer_email;
+                if (targetEmail) {
+                    toastMsg += ` Confirmation email sent to ${targetEmail}! ✉️`;
+                }
+                showToast(toastMsg, 'success');
+
+                // Reconcile local data
+                const orderObj = ordersData.find(o => o.order_id === orderId);
+                if (orderObj) {
+                    orderObj.status = updatedOrder.status;
+                    if (updatedOrder.customer_email) orderObj.customer_email = updatedOrder.customer_email;
+                }
+
+                // Re-render orders table so sequential options disable rules and terminal state immediately update
+                handleOrderFilter();
+
+                // Refresh metrics in background
+                fetchDashboardMetrics();
+            } catch (err) {
+                console.error(`Failed to update status for order ${orderId}:`, err);
+                showToast(`Status update failed: ${err.message}`, 'error');
+                // Revert dropdown selection to previous
+                if (dropdown && prevStatus) {
+                    dropdown.value = prevStatus;
+                    dropdown.disabled = (prevStatus.toLowerCase() === 'returned');
+                }
+            }
+        }
+
+        // Filter Orders Client-side
+        function handleOrderFilter() {
+            const searchTerm = (document.getElementById('order-search').value || '').toLowerCase();
+            const statusFilter = document.getElementById('order-status-filter').value;
+
+            const filtered = ordersData.filter(o => {
+                const matchesSearch = !searchTerm ||
+                    (o.order_id && o.order_id.toLowerCase().includes(searchTerm)) ||
+                    (o.customer_name && o.customer_name.toLowerCase().includes(searchTerm)) ||
+                    (o.product_name && o.product_name.toLowerCase().includes(searchTerm));
+
+                const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            renderOrdersTable(filtered);
+        }
+
+        function filterOrdersByStatus(type) {
+            if (type === 'active') {
+                const filtered = ordersData.filter(o => o.status !== 'Delivered' && o.status !== 'Returned');
+                renderOrdersTable(filtered);
+            }
+        }
+
+        // Fetch Inventory
+        async function fetchInventory() {
+            const tbody = document.getElementById('inventory-tbody');
+            try {
+                const res = await fetch('/api/admin/products', { headers: getApiHeaders() });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                inventoryData = await res.json();
+                renderInventoryTable(inventoryData);
+            } catch (err) {
+                console.error('Failed to load inventory products:', err);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="state-container">
+                                <div class="state-icon">⚠️</div>
+                                <h3 style="color: var(--text-main);">Error Loading Inventory</h3>
+                                <p>Failed to retrieve products from database: ${escapeHtml(err.message)}</p>
+                                <button class="btn btn-secondary" onclick="fetchInventory()">🔄 Retry</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Render Inventory Table
+        function renderInventoryTable(products) {
+            const tbody = document.getElementById('inventory-tbody');
+            if (!products || products.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="state-container">
+                                <div class="state-icon">🏷️</div>
+                                <h3 style="color: var(--text-main);">No Products in Catalog</h3>
+                                <p>Get started by adding your first product using the Add Product button.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = products.map(p => {
+                const safeName = escapeHtml(p.name);
+                const safeDesc = escapeHtml(p.description || 'No description');
+                const priceFormatted = `$${parseFloat(p.price || 0).toFixed(2)}`;
+                const stockVal = p.stock !== undefined ? p.stock : 0;
+                const isActive = p.is_active !== false;
+
+                const statusBadge = isActive
+                    ? `<span class="status-badge" style="background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3);">Active (On Sale)</span>`
+                    : `<span class="status-badge" style="background: rgba(107, 114, 128, 0.12); color: #6b7280; border: 1px solid rgba(107, 114, 128, 0.3);">Archived / Inactive</span>`;
+
+                const prodImg = p.image_url || '/uploads/earbuds.jpg';
+
+                const actionButton = isActive
+                    ? `<button class="btn btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="promptDeactivateProduct(${p.id}, '${safeName.replace(/'/g, "\\'")}')">🗑️ Deactivate</button>`
+                    : `<span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Deactivated</span>`;
+
+                return `
+                    <tr id="row-prod-${p.id}">
+                        <td><strong>#${p.id}</strong></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.65rem;">
+                                <img src="${escapeHtml(prodImg)}" alt="${safeName}" style="width: 38px; height: 38px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border);" onerror="this.onerror=null; this.src='/uploads/earbuds.jpg';" />
+                                <strong>${safeName}</strong>
+                            </div>
+                        </td>
+                        <td style="font-weight: 600; color: var(--primary);">${priceFormatted}</td>
+                        <td>${stockVal}</td>
+                        <td style="max-width: 280px; font-size: 0.825rem; color: var(--text-muted);">${safeDesc}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actionButton}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Filter Inventory Client-side
+        function handleInventoryFilter() {
+            const searchTerm = (document.getElementById('inventory-search').value || '').toLowerCase();
+            const filtered = inventoryData.filter(p => {
+                return !searchTerm ||
+                    (p.name && p.name.toLowerCase().includes(searchTerm)) ||
+                    (p.description && p.description.toLowerCase().includes(searchTerm));
+            });
+            renderInventoryTable(filtered);
+        }
+
+        // Add Product Form Submission
+        async function submitAddProduct() {
+            const nameInput = document.getElementById('prod-name');
+            const priceInput = document.getElementById('prod-price');
+            const stockInput = document.getElementById('prod-stock');
+            const descInput = document.getElementById('prod-desc');
+            const imgInput = document.getElementById('prod-img');
+            const submitBtn = document.getElementById('btn-submit-product');
+
+            const name = nameInput.value.trim();
+            const price = parseFloat(priceInput.value);
+            const stock = parseInt(stockInput.value, 10) || 0;
+            const description = descInput.value.trim() || null;
+            const imageUrl = imgInput.value.trim() || null;
+
+            if (!name) {
+                showToast('Product name is required', 'error');
+                nameInput.focus();
+                return;
+            }
+
+            if (isNaN(price) || price <= 0) {
+                showToast('Price must be greater than zero', 'error');
+                priceInput.focus();
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Creating...';
+
+            try {
+                const res = await fetch('/api/admin/products', {
+                    method: 'POST',
+                    headers: getApiHeaders(),
+                    body: JSON.stringify({
+                        name: name,
+                        price: price,
+                        stock: stock,
+                        description: description,
+                        image_url: imageUrl
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `Server returned ${res.status}`);
+                }
+
+                const createdProduct = await res.json();
+                showToast(`Product "${createdProduct.name}" created successfully!`);
+                closeModal('modal-add-product');
+                document.getElementById('add-product-form').reset();
+                const previewCont = document.getElementById('prod-img-preview-container');
+                if (previewCont) previewCont.style.display = 'none';
+
+                // Refresh inventory and metrics
+                fetchInventory();
+                fetchDashboardMetrics();
+            } catch (err) {
+                console.error('Failed to create product:', err);
+                showToast(`Creation failed: ${err.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Create Product';
+            }
+        }
+
+        // Handle Product Image Upload
+        async function handleProductImageUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const previewEl = document.getElementById('prod-img-preview');
+            const previewContainer = document.getElementById('prod-img-preview-container');
+            const previewStatus = document.getElementById('prod-img-preview-status');
+            const imgInput = document.getElementById('prod-img');
+
+            if (previewEl) previewEl.src = URL.createObjectURL(file);
+            if (previewContainer) previewContainer.style.display = 'flex';
+            if (previewStatus) previewStatus.innerText = 'Uploading image...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const headers = {};
+                const adminKey = localStorage.getItem('nivaran_admin_key');
+                if (adminKey) headers['X-Admin-API-Key'] = adminKey;
+
+                const res = await fetch('/api/admin/upload-image', {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (imgInput) imgInput.value = data.image_url;
+                if (previewStatus) previewStatus.innerText = `Uploaded: ${data.filename}`;
+                showToast('Image uploaded successfully!');
+            } catch (err) {
+                console.error('Image upload failed:', err);
+                if (previewStatus) previewStatus.innerText = 'Upload failed, please use URL or retry';
+                showToast('Failed to upload image file', 'error');
+            }
+        }
+
+        // Update Image Preview from text input
+        function updateImagePreview(url) {
+            const previewEl = document.getElementById('prod-img-preview');
+            const previewContainer = document.getElementById('prod-img-preview-container');
+            const previewStatus = document.getElementById('prod-img-preview-status');
+            if (url && url.trim()) {
+                if (previewEl) previewEl.src = url.trim();
+                if (previewContainer) previewContainer.style.display = 'flex';
+                if (previewStatus) previewStatus.innerText = 'Image preview';
+            } else {
+                if (previewContainer) previewContainer.style.display = 'none';
+            }
+        }
+
+        // Deactivate Product Prompt
+        function promptDeactivateProduct(productId, productName) {
+            deletingProductId = productId;
+            document.getElementById('delete-prod-title').innerText = `"${productName}"`;
+            openModal('modal-confirm-delete');
+        }
+
+        // Execute Deactivate Product
+        async function executeDeleteProduct() {
+            if (!deletingProductId) return;
+            const btn = document.getElementById('btn-confirm-delete');
+            btn.disabled = true;
+            btn.innerText = 'Deactivating...';
+
+            try {
+                const res = await fetch(`/api/admin/products/${deletingProductId}`, {
+                    method: 'DELETE',
+                    headers: getApiHeaders()
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `Server returned ${res.status}`);
+                }
+
+                showToast(`Product #${deletingProductId} deactivated successfully`);
+                closeModal('modal-confirm-delete');
+                deletingProductId = null;
+
+                // Refresh inventory and metrics
+                fetchInventory();
+                fetchDashboardMetrics();
+            } catch (err) {
+                console.error('Failed to deactivate product:', err);
+                showToast(`Deactivation failed: ${err.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Deactivate Product';
+            }
+        }
+
+        // Refresh Current View
+        function refreshCurrentSection() {
+            fetchDashboardMetrics();
+            fetchOrders();
+            fetchInventory();
+            showToast('Dashboard data refreshed');
+        }
+
+        // Initialization on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('nivaran_theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                document.getElementById('theme-btn').innerText = savedTheme === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+            }
+
+            fetchDashboardMetrics();
+            fetchOrders();
+            fetchInventory();
+        });
+    </script>
+</body>
+</html>

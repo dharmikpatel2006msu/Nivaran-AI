@@ -122,16 +122,21 @@ def retrieve_context(
 
 
 def get_user_active_orders(telegram_id: int) -> List[Dict[str, Any]]:
-    """Retrieves active orders linked to user's email (from store_orders) or telegram_id.
-
-    Args:
-        telegram_id: Telegram user ID.
-
-    Returns:
-        List of order dictionaries with product details.
-    """
+    """Retrieves active orders linked to user's telegram_id or email directly from PostgreSQL."""
     if not telegram_id or telegram_id <= 0:
         return []
+
+    try:
+        from src.db.postgres_client import lookup_customer_orders, execute_query
+        # Check if user has email set in users table
+        user_rows = execute_query("SELECT email FROM users WHERE telegram_id = %s;", (telegram_id,), fetch=True)
+        user_email = user_rows[0].get("email") if user_rows else None
+
+        pg_orders = lookup_customer_orders(telegram_id=telegram_id, email=user_email)
+        if pg_orders:
+            return pg_orders
+    except Exception as e:
+        logger.warning(f"⚠️ Notice querying PostgreSQL active orders: {e}")
 
     try:
         supabase = get_supabase_client()

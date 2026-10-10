@@ -29,6 +29,38 @@ def get_or_create_user(telegram_id: int, name: str, email: str = None) -> Dict[s
     """
     now_iso = datetime.utcnow().isoformat()
 
+    # Try direct PostgreSQL first
+    try:
+        from src.db.postgres_client import execute_query
+        existing = execute_query("SELECT * FROM users WHERE telegram_id = %s;", (telegram_id,), fetch=True)
+        if existing:
+            u = existing[0]
+            update_sql = "UPDATE users SET last_active_at = CURRENT_TIMESTAMP, name = %s"
+            params = [name]
+            if email:
+                update_sql += ", email = %s"
+                params.append(email.strip().lower())
+            update_sql += " WHERE id = %s RETURNING *;"
+            params.append(u["id"])
+            updated = execute_query(update_sql, tuple(params), fetch=True, commit=True)
+            return updated[0] if updated else u
+        else:
+            insert_sql = """
+                INSERT INTO users (telegram_id, name, email, created_at, last_active_at)
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING *;
+            """
+            inserted = execute_query(
+                insert_sql,
+                (telegram_id, name, email.strip().lower() if email else None),
+                fetch=True,
+                commit=True
+            )
+            if inserted:
+                return inserted[0]
+    except Exception as pg_e:
+        logger.debug(f"Direct PG user upsert fallback: {pg_e}")
+
     try:
         supabase = get_supabase_client()
         # Check existing user
@@ -65,6 +97,17 @@ def update_user_email(telegram_id: int, email: str) -> None:
     if not telegram_id or not email:
         return
     try:
+        from src.db.postgres_client import execute_query
+        execute_query(
+            "UPDATE users SET email = %s, last_active_at = CURRENT_TIMESTAMP WHERE telegram_id = %s;",
+            (email.strip().lower(), telegram_id),
+            fetch=False,
+            commit=True
+        )
+    except Exception:
+        pass
+
+    try:
         supabase = get_supabase_client()
         supabase.table("users").update({
             "email": email.strip().lower(),
@@ -79,6 +122,16 @@ def get_store_orders_by_email(email: str) -> List[Dict[str, Any]]:
     """Fetches active store orders and items for a given email address."""
     if not email:
         return []
+
+    # Query PostgreSQL
+    try:
+        from src.db.postgres_client import lookup_customer_orders
+        pg_orders = lookup_customer_orders(email=email)
+        if pg_orders:
+            return pg_orders
+    except Exception:
+        pass
+
     try:
         supabase = get_supabase_client()
         res = (
@@ -113,6 +166,17 @@ def fetch_recent_history(user_id: int, limit: int = CHAT_HISTORY_WINDOW) -> List
         return []
 
     try:
+        from src.db.postgres_client import execute_query
+        rows = execute_query(
+            "SELECT * FROM chat_history WHERE user_id = %s ORDER BY created_at DESC LIMIT %s;",
+            (user_id, limit),
+            fetch=True
+        )
+        return list(reversed(rows))
+    except Exception:
+        pass
+
+    try:
         supabase = get_supabase_client()
         response = (
             supabase.table("chat_history")
@@ -122,11 +186,9 @@ def fetch_recent_history(user_id: int, limit: int = CHAT_HISTORY_WINDOW) -> List
             .limit(limit)
             .execute()
         )
-        # Reverse to return in chronological order (oldest to newest)
         history = response.data or []
         return list(reversed(history))
-    except Exception as e:
-        logger.error(f"Error fetching chat history for user_id={user_id}: {e}")
+    except Exception:
         return []
 
 
@@ -134,6 +196,18 @@ def log_chat_message(user_id: int, role: str, content: str, message_type: str = 
     """Logs a single message ('user' or 'assistant') to the `chat_history` table with voice support."""
     if user_id <= 0:
         return
+
+    try:
+        from src.db.postgres_client import execute_query
+        execute_query(
+            "INSERT INTO chat_history (user_id, role, content, message_type, created_at) VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP);",
+            (user_id, role, content, message_type),
+            fetch=False,
+            commit=True
+        )
+        return
+    except Exception:
+        pass
 
     try:
         supabase = get_supabase_client()
@@ -144,11 +218,9 @@ def log_chat_message(user_id: int, role: str, content: str, message_type: str = 
             "created_at": datetime.utcnow().isoformat()
         }
         try:
-            # Try inserting with message_type column
             payload_with_type = {**payload, "message_type": message_type}
             supabase.table("chat_history").insert(payload_with_type).execute()
         except Exception:
-            # Fallback if message_type column is not migrated yet in Supabase
             supabase.table("chat_history").insert(payload).execute()
     except Exception as e:
         logger.error(f"Error logging chat message role={role} user_id={user_id}: {e}")
@@ -445,19 +517,67 @@ def process_incoming_message(
         # Step 3: RAG Retrieval
         docs, max_similarity = retrieve_context(message_text, match_threshold=SIMILARITY_THRESHOLD, match_count=3)
 
-        # Step 3.5: Fetch Active Customer Orders for Context Injection
+        # Step 3.5: Fetch Active Customer Orders from PostgreSQL for Real-Time Context Injection
         user_orders = get_user_active_orders(telegram_id)
         if user_orders:
             formatted_orders_list = []
             for o in user_orders:
-                p_info = o.get("products") or {}
-                p_name = p_info.get("name", "Product")
-                p_price = p_info.get("price", "")
-                price_str = f" (${p_price})" if p_price else ""
-                formatted_orders_list.append(f"- Order #{o.get('id')}: {p_name}{price_str} | Status: {o.get('status')}")
+                oid = o.get("order_id") or o.get("id")
+                p_name = o.get("product_name") or (o.get("products") or {}).get("name") or "Product"
+                p_price = o.get("total") or (o.get("products") or {}).get("price") or ""
+                price_str = f" (${float(p_price):.2f})" if p_price else ""
+                ostatus = o.get("status", "Booked")
+                formatted_orders_list.append(f"- Order #{oid}: {p_name}{price_str} | Status: {ostatus}")
             active_orders_formatted = "\n".join(formatted_orders_list)
         else:
             active_orders_formatted = "No linked active orders found for this customer account."
+
+        # Real-Time Direct Order Status Query Handling (Phase 6 Grounding)
+        import re
+        order_query_match = re.search(r"\b(ORD-[A-Za-z0-9]+)\b|order\s*#?([A-Za-z0-9_-]{3,15})", message_text, re.IGNORECASE)
+        tracking_keywords = ["status", "where is", "has my order", "when was", "track", "delivery", "delivered", "shipped"]
+        is_tracking_intent = any(k in message_text.lower() for k in tracking_keywords)
+
+        if order_query_match and is_tracking_intent and not is_pending_ticket_prompt:
+            candidate_id = (order_query_match.group(1) or order_query_match.group(2) or "").upper()
+            if not candidate_id.startswith("ORD-") and candidate_id.isdigit():
+                candidate_id = f"ORD-{candidate_id}"
+
+            from src.db.postgres_client import get_order_by_id
+            live_order = get_order_by_id(candidate_id)
+
+            if live_order:
+                # Factual real-time response from PostgreSQL
+                status_messages = {
+                    "Booked": "Your order has been booked and is currently being prepared for dispatch.",
+                    "Shipped": "Your order has been shipped and is on its way to your destination.",
+                    "Out for Delivery": "Your package is out for delivery with our courier and should arrive today!",
+                    "Delivered": "Your package has been successfully delivered.",
+                    "Returned": "This order has been processed as returned.",
+                }
+                status_explanation = status_messages.get(
+                    live_order["status"],
+                    f"Your order is currently {live_order['status']}."
+                )
+
+                tracking_reply = (
+                    f"📦 **Live Order Tracking — #{live_order['order_id']}**\n\n"
+                    f"• **Item:** {live_order['product_name']}\n"
+                    f"• **Quantity:** {live_order['quantity']}\n"
+                    f"• **Total:** ${live_order['total']:.2f}\n"
+                    f"• **Current Status:** `{live_order['status']}`\n\n"
+                    f"ℹ️ {status_explanation}\n\n"
+                    "Is there anything else you would like assistance with?"
+                )
+                log_chat_message(user_id, "assistant", tracking_reply)
+                return tracking_reply
+            elif "ord-" in message_text.lower() or candidate_id.startswith("ORD-"):
+                not_found_reply = (
+                    f"🔍 I searched our records, but order **#{candidate_id}** was not found in our database.\n\n"
+                    "Please double-check your order number or let me know your registered email address so I can locate your active orders."
+                )
+                log_chat_message(user_id, "assistant", not_found_reply)
+                return not_found_reply
 
         # Step 5: Escalation Evaluation
         should_escalate, escalation_reason = evaluate_escalation_triggers(
