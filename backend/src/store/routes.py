@@ -78,6 +78,14 @@ FALLBACK_STORE_PRODUCTS: List[dict] = [
 async def list_store_products():
     """Retrieves all active customer-facing products with stock levels."""
     try:
+        from src.db.postgres_client import get_active_products
+        prods = get_active_products()
+        if prods and len(prods) > 0:
+            return prods
+    except Exception as e:
+        logger.warning(f"⚠️ Could not fetch products from PostgreSQL: {e}")
+
+    try:
         supabase = get_supabase_client()
         res = supabase.table("store_products").select("*").eq("status", "active").order("id").execute()
         if res.data and len(res.data) > 0:
@@ -201,7 +209,7 @@ async def create_store_order(payload: CreateOrderRequest):
                 "email": payload.customer.email,
                 "phone": payload.customer.phone,
                 "total": total_amount,
-                "status": "processing",
+                "status": "Booked",
                 "created_at": created_at_iso
             }).execute()
 
@@ -221,6 +229,34 @@ async def create_store_order(payload: CreateOrderRequest):
             logger.info(f"🛒 Store order '{order_id}' persisted successfully to DB. Total: ${total_amount}")
         except Exception as e:
             logger.error(f"❌ Failed to persist store order '{order_id}' to Supabase: {e}")
+
+    # Mirror into PostgreSQL orders table and store_orders table for Manager Dashboard
+    try:
+        from src.db.postgres_client import execute_query
+        primary_p_id = payload.items[0].product_id if payload.items else None
+        primary_qty = payload.items[0].quantity if payload.items else 1
+        execute_query(
+            """
+            INSERT INTO orders (id, customer_name, customer_email, product_id, quantity, total, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'Booked', CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO UPDATE SET total = EXCLUDED.total, customer_email = EXCLUDED.customer_email;
+            """,
+            (order_id, payload.customer.name, payload.customer.email, primary_p_id, primary_qty, total_amount),
+            fetch=False,
+            commit=True
+        )
+        execute_query(
+            """
+            INSERT INTO store_orders (id, customer_name, address, email, phone, total, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'Booked', CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO UPDATE SET total = EXCLUDED.total, status = EXCLUDED.status;
+            """,
+            (order_id, payload.customer.name, payload.customer.address, payload.customer.email, payload.customer.phone or "", total_amount),
+            fetch=False,
+            commit=True
+        )
+    except Exception as pg_err:
+        logger.warning(f"⚠️ Notice mirroring store order to PostgreSQL: {pg_err}")
     else:
         # Deduct in fallback memory array
         for item in payload.items:
@@ -228,9 +264,10 @@ async def create_store_order(payload: CreateOrderRequest):
                 db_products_map[item.product_id]["stock"] -= item.quantity
 
     # 4. Dispatch Order Confirmation Email
+    email_res = {"sent": False, "status": "unconfigured", "message": "SMTP not configured"}
     try:
         items_dict_list = [item.dict() for item in order_items_response]
-        send_order_confirmation_email(
+        email_res = send_order_confirmation_email(
             customer_name=payload.customer.name,
             customer_email=payload.customer.email,
             order_id=order_id,
@@ -239,13 +276,27 @@ async def create_store_order(payload: CreateOrderRequest):
         )
     except Exception as email_err:
         logger.error(f"⚠️ Failed to dispatch order confirmation email: {email_err}")
+        email_res = {"sent": False, "status": "error", "message": str(email_err)}
 
     return OrderResponse(
-
         status="success",
         order_id=order_id,
         customer=payload.customer,
         items=order_items_response,
         total=total_amount,
-        created_at=created_at_iso
+        created_at=created_at_iso,
+        email_status=email_res.get("status", "simulated"),
+        email_message=email_res.get("message")
     )
+
+
+@store_router.post("/test-email", summary="Test SMTP order confirmation email")
+async def test_email_route(email: str = ""):
+    """Sends a test confirmation email to verify SMTP credentials."""
+    if not email or "@" not in email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Valid email address is required"
+        )
+    from src.services.email_service import send_test_email
+    return send_test_email(email)

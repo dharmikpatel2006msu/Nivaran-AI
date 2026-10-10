@@ -47,66 +47,118 @@ async function detectApiBase() {
   return apiBaseUrl;
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // 2. Fetch Products
 async function loadProducts() {
   await detectApiBase();
   const grid = document.getElementById('products-grid');
+  if (grid) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+        <div class="spinner" style="border-top-color: var(--primary);"></div>
+        <p style="margin-top: 1rem; color: var(--text-muted);">Loading products catalog from database...</p>
+      </div>
+    `;
+  }
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/store/products`);
-    if (!response.ok) throw new Error('API request failed');
+    let response = await fetch(`${apiBaseUrl}/api/products`);
+    if (!response.ok) {
+      response = await fetch(`${apiBaseUrl}/api/store/products`);
+    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to retrieve products`);
 
-    storeProducts = await response.json();
+    const rawProducts = await response.json();
+    // Exclude inactive or soft-deleted products
+    storeProducts = (rawProducts || []).filter(p => p.is_active !== false && p.status !== 'inactive');
     renderProductsGrid(storeProducts);
   } catch (err) {
-    console.warn('⚠️ Unable to connect to backend store endpoint, displaying default catalog:', err);
-    storeProducts = [
-      { id: 1, name: 'Aura Wireless Headphones', description: 'Active noise cancelling wireless headphones with 40h battery life and spatial audio.', price: 129.99, image_url: PRODUCT_IMAGES[1], stock: 15, status: 'active' },
-      { id: 2, name: 'Pulse Fitness Smartwatch', description: 'Waterproof fitness smartwatch with AMOLED display, heart rate tracking, and GPS.', price: 179.99, image_url: PRODUCT_IMAGES[2], stock: 8, status: 'active' },
-      { id: 3, name: 'SonicBoom Bluetooth Speaker', description: 'Compact waterproof Bluetooth speaker delivering 360-degree immersive bass sound.', price: 69.99, image_url: PRODUCT_IMAGES[3], stock: 20, status: 'active' },
-      { id: 4, name: 'ZenErgo Mechanical Keyboard', description: 'RGB tactile wireless mechanical keyboard with hot-swappable switches and wrist rest.', price: 119.99, image_url: PRODUCT_IMAGES[4], stock: 5, status: 'active' },
-      { id: 5, name: 'Clarion HD Ergonomic Earbuds', description: 'True wireless in-ear earbuds with dual mic noise suppression and instant pairing.', price: 49.99, image_url: PRODUCT_IMAGES[5], stock: 0, status: 'active' }
-    ];
-    renderProductsGrid(storeProducts);
+    console.error('❌ Failed to connect to product catalog API:', err);
+    if (grid) {
+      grid.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">⚠️</div>
+          <h3 style="margin-bottom: 0.5rem; color: var(--text-main);">Unable to Load Products</h3>
+          <p style="color: var(--text-muted); margin-bottom: 1.25rem;">Could not connect to the backend product service. Please verify server connection.</p>
+          <button class="btn btn-secondary" onclick="loadProducts()" style="padding: 0.5rem 1.25rem;">🔄 Try Again</button>
+        </div>
+      `;
+    }
   }
 }
 
 // 3. Render Product Cards Grid
+function resolveProductImageUrl(p) {
+  if (!p) return '/uploads/earbuds.jpg';
+  let url = (p.image_url ? String(p.image_url) : '').trim();
+  if (url.toLowerCase().includes('earbuds') || (p.name && p.name.toLowerCase().includes('earbuds') && !url.startsWith('http'))) {
+    return '/uploads/earbuds.jpg';
+  }
+  if (url.startsWith('C:') || url.startsWith('file:') || url.includes('\\')) {
+    const filename = url.split(/[\\/]/).pop();
+    if (filename) return `/uploads/${filename}`;
+  }
+  if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/'))) {
+    return url;
+  }
+  return PRODUCT_IMAGES[p.id] || 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&auto=format&fit=crop&q=60';
+}
+
 function renderProductsGrid(products) {
   const grid = document.getElementById('products-grid');
   if (!grid) return;
 
-  if (products.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">No products available in store right now.</div>`;
+  if (!products || products.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);">
+        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📦</div>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-main);">No Products Available</h3>
+        <p>No active products are available in the storefront right now. Check back soon!</p>
+      </div>
+    `;
     return;
   }
 
   grid.innerHTML = products.map(p => {
-    const imgUrl = p.image_url || PRODUCT_IMAGES[p.id] || 'https://via.placeholder.com/300?text=Product';
-    let stockBadgeClass = 'in-stock';
-    let stockBadgeText = `In Stock: ${p.stock}`;
+    const rawImg = resolveProductImageUrl(p);
+    const imgUrl = escapeHtml(rawImg);
+    const safeName = escapeHtml(p.name);
+    const safeDesc = escapeHtml(p.description || '');
+    const stockVal = parseInt(p.stock, 10) || 0;
 
-    if (p.stock === 0) {
+    let stockBadgeClass = 'in-stock';
+    let stockBadgeText = `In Stock: ${stockVal}`;
+
+    if (stockVal === 0) {
       stockBadgeClass = 'out-of-stock';
       stockBadgeText = 'Out of Stock';
-    } else if (p.stock <= 5) {
+    } else if (stockVal <= 5) {
       stockBadgeClass = 'low-stock';
-      stockBadgeText = `Only ${p.stock} left`;
+      stockBadgeText = `Only ${stockVal} left`;
     }
 
     return `
       <div class="product-card" onclick="openProductDetail(${p.id})">
         <div class="product-image-wrap">
-          <img src="${imgUrl}" alt="${p.name}" class="product-img" loading="lazy" />
+          <img src="${imgUrl}" alt="${safeName}" class="product-img" loading="lazy" onerror="this.onerror=null; this.src='/uploads/earbuds.jpg';" />
           <span class="stock-badge ${stockBadgeClass}">${stockBadgeText}</span>
         </div>
         <div class="product-info">
-          <h3 class="product-name">${p.name}</h3>
-          <p class="product-desc-snippet">${p.description || ''}</p>
+          <h3 class="product-name">${safeName}</h3>
+          <p class="product-desc-snippet">${safeDesc}</p>
           <div class="product-card-footer">
-            <span class="product-price">$${parseFloat(p.price).toFixed(2)}</span>
+            <span class="product-price">$${parseFloat(p.price || 0).toFixed(2)}</span>
             <button class="btn-card-action" onclick="event.stopPropagation(); openProductDetail(${p.id})">
-              ${p.stock > 0 ? 'View Details' : 'Out of Stock'}
+              ${stockVal > 0 ? 'View Details' : 'Out of Stock'}
             </button>
           </div>
         </div>
@@ -132,8 +184,12 @@ async function openProductDetail(productId) {
 
   detailQuantity = activeProduct.stock > 0 ? 1 : 0;
   
-  const imgUrl = activeProduct.image_url || PRODUCT_IMAGES[activeProduct.id] || 'https://via.placeholder.com/400';
-  document.getElementById('detail-img').src = imgUrl;
+  const imgUrl = resolveProductImageUrl(activeProduct);
+  const detailImg = document.getElementById('detail-img');
+  if (detailImg) {
+    detailImg.src = imgUrl;
+    detailImg.onerror = function() { this.src = '/uploads/earbuds.jpg'; };
+  }
   document.getElementById('detail-name').innerText = activeProduct.name;
   document.getElementById('detail-price').innerText = `$${parseFloat(activeProduct.price).toFixed(2)}`;
   document.getElementById('detail-desc').innerText = activeProduct.description || 'No description available.';
@@ -438,6 +494,45 @@ function showOrderSuccessConfirmation(orderData) {
   document.getElementById('confirm-customer-name').innerText = orderData.customer.name;
   document.getElementById('confirm-email').innerText = orderData.customer.email;
   document.getElementById('confirm-total').innerText = `$${parseFloat(orderData.total).toFixed(2)}`;
+
+  const banner = document.getElementById('order-email-banner');
+  if (banner) {
+    const custEmail = escapeHtml(orderData.customer.email);
+    if (orderData.email_status === 'sent') {
+      banner.style.background = 'rgba(16, 185, 129, 0.1)';
+      banner.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+      banner.innerHTML = `
+        <span style="font-size: 1.25rem;">✅</span>
+        <p style="font-size: 0.85rem; color: var(--text-primary); margin: 0; line-height: 1.45;">
+          A confirmation email with your order receipt and <strong>Customer Support Bot link</strong> has been sent to <strong>${custEmail}</strong>.
+        </p>
+      `;
+    } else if (orderData.email_status === 'auth_error') {
+      banner.style.background = 'rgba(239, 68, 68, 0.1)';
+      banner.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+      banner.innerHTML = `
+        <span style="font-size: 1.25rem;">⚠️</span>
+        <div style="font-size: 0.85rem; color: var(--text-primary); margin: 0; line-height: 1.45;">
+          <strong>Email Authentication Error:</strong>
+          <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem;">
+            Order recorded, but SMTP login failed. Please verify your 16-character Google App Password in <code>backend/.env</code>.
+          </div>
+        </div>
+      `;
+    } else {
+      banner.style.background = 'rgba(245, 158, 11, 0.12)';
+      banner.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+      banner.innerHTML = `
+        <span style="font-size: 1.25rem;">📧</span>
+        <div style="font-size: 0.85rem; color: var(--text-primary); margin: 0; line-height: 1.45;">
+          <strong>Order Confirmed for ${custEmail}</strong>
+          <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">
+            To send live emails to your inbox, configure your <code>SMTP_USER</code> and <code>SMTP_PASSWORD</code> in <code>backend/.env</code>.
+          </div>
+        </div>
+      `;
+    }
+  }
 
   openOverlay('modal-success');
 }

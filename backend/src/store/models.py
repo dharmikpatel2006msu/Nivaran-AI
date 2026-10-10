@@ -56,3 +56,5 @@ class OrderResponse(BaseModel):
     items: List[OrderItemResponse]
     total: float = Field(..., description="Server-calculated total price for order")
     created_at: str
+    email_status: Optional[str] = Field("simulated", description="Email delivery status: sent, unconfigured, or error")
+    email_message: Optional[str] = Field(None, description="Detailed message regarding confirmation email delivery")
