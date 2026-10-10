@@ -108,7 +108,7 @@ async def list_tickets(status: Optional[TicketStatus] = Query(None, description=
             query = query.eq("status", status.value)
         res = query.order("created_at", desc=True).execute()
 
-        if res.data:
+        if res.data is not None:
             return res.data
     except Exception as e:
         logger.warning(f"Database query failed, returning mock data: {e}")
@@ -159,7 +159,7 @@ async def list_users():
     try:
         supabase = get_supabase_client()
         res = supabase.table("users").select("*").order("last_active_at", desc=True).execute()
-        if res.data:
+        if res.data is not None:
             return res.data
     except Exception as e:
         logger.warning(f"Database query failed for users list, returning mock fallback: {e}")
@@ -174,7 +174,7 @@ async def get_user_chat_history(user_id: int = Path(..., description="ID of user
         supabase = get_supabase_client()
         user_res = supabase.table("users").select("*").eq("id", user_id).execute()
         
-        if user_res.data:
+        if user_res.data is not None:
             user_obj = user_res.data[0]
             msg_res = supabase.table("chat_history").select("*").eq("user_id", user_id).order("created_at").execute()
             messages = msg_res.data or []

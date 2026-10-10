@@ -1157,7 +1157,7 @@
         // Fetch Overview KPI Metrics
         async function fetchDashboardMetrics() {
             try {
-                const res = await fetch('/api/admin/manager-stats', { headers: getApiHeaders() });
+                const res = await fetch('http://localhost:8005/api/admin/manager-stats', { headers: getApiHeaders() });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const stats = await res.json();
                 document.getElementById('kpi-total-orders').innerText = stats.total_orders;
@@ -1173,7 +1173,7 @@
         async function fetchOrders() {
             const tbody = document.getElementById('orders-tbody');
             try {
-                const res = await fetch('/api/admin/orders', { headers: getApiHeaders() });
+                const res = await fetch('http://localhost:8005/api/admin/orders', { headers: getApiHeaders() });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 ordersData = await res.json();
                 renderOrdersTable(ordersData);
@@ -1269,7 +1269,7 @@
             if (dropdown) dropdown.disabled = true;
 
             try {
-                const res = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
+                const res = await fetch(`http://localhost:8005/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
                     method: 'PATCH',
                     headers: getApiHeaders(),
                     body: JSON.stringify({ status: newStatus })
@@ -1342,7 +1342,7 @@
         async function fetchInventory() {
             const tbody = document.getElementById('inventory-tbody');
             try {
-                const res = await fetch('/api/admin/products', { headers: getApiHeaders() });
+                const res = await fetch('http://localhost:8005/api/admin/products', { headers: getApiHeaders() });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 inventoryData = await res.json();
                 renderInventoryTable(inventoryData);
@@ -1459,7 +1459,7 @@
             submitBtn.innerText = 'Creating...';
 
             try {
-                const res = await fetch('/api/admin/products', {
+                const res = await fetch('http://localhost:8005/api/admin/products', {
                     method: 'POST',
                     headers: getApiHeaders(),
                     body: JSON.stringify({
@@ -1517,7 +1517,7 @@
                 const adminKey = localStorage.getItem('nivaran_admin_key');
                 if (adminKey) headers['X-Admin-API-Key'] = adminKey;
 
-                const res = await fetch('/api/admin/upload-image', {
+                const res = await fetch('http://localhost:8005/api/admin/upload-image', {
                     method: 'POST',
                     headers: headers,
                     body: formData
@@ -1563,7 +1563,7 @@
             btn.innerText = 'Deactivating...';
 
             try {
-                const res = await fetch(`/api/admin/products/${deletingProductId}`, {
+                const res = await fetch(`http://localhost:8005/api/admin/products/${deletingProductId}`, {
                     method: 'DELETE',
                     headers: getApiHeaders()
                 });
