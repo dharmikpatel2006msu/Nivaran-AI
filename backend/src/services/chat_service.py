@@ -11,6 +11,7 @@ from src.config import CHAT_HISTORY_WINDOW, SIMILARITY_THRESHOLD
 from src.db.supabase_client import get_supabase_client
 from src.rag.retriever import retrieve_context, get_user_active_orders
 from src.rag.generator import generate_llm_response
+from src.rag.reformulator import reformulate_query
 from src.services.escalation_service import evaluate_escalation_triggers, create_in_house_ticket
 
 logger = logging.getLogger(__name__)
@@ -284,13 +285,33 @@ def process_incoming_message(
     telegram_id: int,
     user_display_name: str,
     message_text: str,
-    is_voice: bool = False
-) -> str:
-    """End-to-end orchestration pipeline for an incoming user message (text or voice)."""
+    is_voice: bool = False,
+    return_metadata: bool = False
+) -> Any:
+    """End-to-end orchestration pipeline for an incoming user message (text or voice).
+
+    Args:
+        telegram_id: Customer or Telegram user ID.
+        user_display_name: Display name.
+        message_text: Incoming raw text query.
+        is_voice: Whether the query originated as voice audio.
+        return_metadata: If True, returns dict with {'response': str, 'reformulated_query': str}.
+                         If False, returns response string directly.
+    """
+    def _result(reply_str: str, rewritten_query: str = message_text):
+        if return_metadata:
+            return {"response": reply_str, "reformulated_query": rewritten_query}
+        return reply_str
+
     voice_tag = " [Voice Query]" if is_voice else ""
     logger.info(f"📩 Processing message{voice_tag} from user '{user_display_name}' ({telegram_id}): '{message_text[:50]}...'")
 
     try:
+        # Step 0: Phonetic voice transcript normalization if query originated from voice
+        if is_voice:
+            from src.services.phonetic_normalizer import normalize_voice_transcript
+            message_text = normalize_voice_transcript(message_text)
+
         # Step 1: User resolution
         user = get_or_create_user(telegram_id, user_display_name)
         user_id = user.get("id", 0)
@@ -347,7 +368,7 @@ def process_incoming_message(
                 )
 
             log_chat_message(user_id, "assistant", reply)
-            return reply
+            return _result(reply, message_text)
 
 
         # Check if the previous assistant turn was a ticket confirmation request or update prompt
@@ -420,7 +441,7 @@ def process_incoming_message(
                     "Our customer support team has received your ticket and will review your issue shortly. Thank you for your patience!"
                 )
                 log_chat_message(user_id, "assistant", ticket_summary_reply)
-                return ticket_summary_reply
+                return _result(ticket_summary_reply, message_text)
 
             # Sub-case B: User replies UPDATE -> Send Format Prompt
             elif any(w in user_clean_text.split() for w in update_words) or user_clean_text in update_words:
@@ -430,13 +451,13 @@ def process_incoming_message(
                     "Issue: Your updated issue description here"
                 )
                 log_chat_message(user_id, "assistant", update_prompt_reply)
-                return update_prompt_reply
+                return _result(update_prompt_reply, message_text)
 
             # Sub-case C: User replies CANCEL / NO TICKET / NO
             elif any(w in user_clean_text.split() for w in cancel_words) or user_clean_text in {"no", "cancel", "n"}:
                 cancel_reply = "Understood! I have cancelled the support ticket creation request. Please let me know if there is anything else I can help you with!"
                 log_chat_message(user_id, "assistant", cancel_reply)
-                return cancel_reply
+                return _result(cancel_reply, message_text)
 
         # CASE 2: Handle custom format input (Order Number: ORD-XXXXX \n Issue: ...)
         import re
@@ -480,7 +501,7 @@ def process_incoming_message(
                         "Issue: Your issue description"
                     )
                     log_chat_message(user_id, "assistant", invalid_order_reply)
-                    return invalid_order_reply
+                    return _result(invalid_order_reply, message_text)
 
                 # Dynamically evaluate trigger reason for submitted issue
                 _, actual_reason = evaluate_escalation_triggers(
@@ -512,12 +533,9 @@ def process_incoming_message(
                     "Our customer support team has received your ticket and will review your issue shortly. Thank you for your patience!"
                 )
                 log_chat_message(user_id, "assistant", ticket_summary_reply)
-                return ticket_summary_reply
+                return _result(ticket_summary_reply, message_text)
 
-        # Step 3: RAG Retrieval
-        docs, max_similarity = retrieve_context(message_text, match_threshold=SIMILARITY_THRESHOLD, match_count=3)
-
-        # Step 3.5: Fetch Active Customer Orders from PostgreSQL for Real-Time Context Injection
+        # Step 3: Fetch Active Customer Orders from PostgreSQL for Real-Time Context Injection
         user_orders = get_user_active_orders(telegram_id)
         if user_orders:
             formatted_orders_list = []
@@ -532,11 +550,22 @@ def process_incoming_message(
         else:
             active_orders_formatted = "No linked active orders found for this customer account."
 
+        # Step 3.1: Conversational Query Reformulation (Coreference Resolution & Contextual Disambiguation)
+        search_query = reformulate_query(
+            query_text=message_text,
+            chat_history=history_records,
+            active_orders=user_orders
+        )
+
+        # Step 3.2: RAG Vector Retrieval using the context-enriched query
+        docs, max_similarity = retrieve_context(search_query, match_threshold=SIMILARITY_THRESHOLD, match_count=3)
+
         # Real-Time Direct Order Status Query Handling (Phase 6 Grounding)
         import re
-        order_query_match = re.search(r"\b(ORD-[A-Za-z0-9]+)\b|order\s*#?([A-Za-z0-9_-]{3,15})", message_text, re.IGNORECASE)
+        combined_text = f"{message_text} {search_query}"
+        order_query_match = re.search(r"\b(ORD-[A-Za-z0-9]+)\b|order\s*#?([A-Za-z0-9_-]{3,15})", combined_text, re.IGNORECASE)
         tracking_keywords = ["status", "where is", "has my order", "when was", "track", "delivery", "delivered", "shipped"]
-        is_tracking_intent = any(k in message_text.lower() for k in tracking_keywords)
+        is_tracking_intent = any(k in combined_text.lower() for k in tracking_keywords)
 
         if order_query_match and is_tracking_intent and not is_pending_ticket_prompt:
             candidate_id = (order_query_match.group(1) or order_query_match.group(2) or "").upper()
@@ -570,14 +599,14 @@ def process_incoming_message(
                     "Is there anything else you would like assistance with?"
                 )
                 log_chat_message(user_id, "assistant", tracking_reply)
-                return tracking_reply
-            elif "ord-" in message_text.lower() or candidate_id.startswith("ORD-"):
+                return _result(tracking_reply, search_query)
+            elif "ord-" in combined_text.lower() or candidate_id.startswith("ORD-"):
                 not_found_reply = (
                     f"🔍 I searched our records, but order **#{candidate_id}** was not found in our database.\n\n"
                     "Please double-check your order number or let me know your registered email address so I can locate your active orders."
                 )
                 log_chat_message(user_id, "assistant", not_found_reply)
-                return not_found_reply
+                return _result(not_found_reply, search_query)
 
         # Step 5: Escalation Evaluation
         should_escalate, escalation_reason = evaluate_escalation_triggers(
@@ -591,7 +620,7 @@ def process_incoming_message(
         if should_escalate:
             linked_order_id = user_orders[0].get("id") if (user_orders and len(user_orders) > 0) else None
             import re
-            match = re.search(r"ORD-[A-Za-z0-9]+", message_text, re.IGNORECASE)
+            match = re.search(r"ORD-[A-Za-z0-9]+", f"{message_text} {search_query}", re.IGNORECASE)
             if match:
                 linked_order_id = match.group(0).upper()
 
@@ -610,16 +639,17 @@ def process_incoming_message(
                 "• Reply **CANCEL** if you do not want to open a support ticket."
             )
             log_chat_message(user_id, "assistant", confirm_request_reply)
-            return confirm_request_reply
+            return _result(confirm_request_reply, search_query)
 
         # Step 4: Normal LLM Reply Generation (Non-escalated queries)
         ai_reply = generate_llm_response(message_text, docs, formatted_history, active_orders_formatted)
         log_chat_message(user_id, "assistant", ai_reply)
-        return ai_reply
+        return _result(ai_reply, search_query)
     except Exception as e:
         logger.error(f"❌ Unhandled error in process_incoming_message: {e}", exc_info=True)
-        return (
+        fallback_msg = (
             "Hello! I am Nivaran AI, your ShopNest customer support assistant.\n\n"
             "I can help you with store questions, order tracking, shipping options, and returns. "
             "How may I assist you today?"
         )
+        return _result(fallback_msg, message_text)

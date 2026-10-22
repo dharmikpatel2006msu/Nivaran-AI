@@ -100,6 +100,9 @@ async def voice_chat_endpoint(
                 detail="No voice audio or text query provided."
             )
 
+        from src.services.phonetic_normalizer import normalize_voice_transcript
+        query_text = normalize_voice_transcript(query_text)
+
         logger.info(f"🎙️ Voice chat received query: '{query_text}' (User: {user_name}, ID: {telegram_id})")
 
         # Associate email if provided
@@ -107,12 +110,16 @@ async def voice_chat_endpoint(
             get_or_create_user(telegram_id, user_name, email=email)
 
         # Process through RAG Pipeline & log explicitly as voice query in DB
-        reply_text = process_incoming_message(
+        result_payload = process_incoming_message(
             telegram_id=telegram_id or 0,
             user_display_name=user_name or "Web Customer",
             message_text=query_text,
-            is_voice=is_audio
+            is_voice=is_audio,
+            return_metadata=True
         )
+
+        reply_text = result_payload.get("response", "") if isinstance(result_payload, dict) else result_payload
+        reformulated_query = result_payload.get("reformulated_query", query_text) if isinstance(result_payload, dict) else query_text
 
         audio_base64 = None
         if generate_audio and reply_text:
@@ -125,6 +132,7 @@ async def voice_chat_endpoint(
         return {
             "status": "success",
             "query": query_text,
+            "reformulated_query": reformulated_query,
             "response": reply_text,
             "is_voice": is_audio,
             "audio_base64": audio_base64

@@ -90,11 +90,13 @@ def transcribe_audio(
                 kwargs["language"] = language
 
             transcript = client.audio.transcriptions.create(**kwargs)
-            transcript_text = str(transcript).strip()
+            raw_transcript = str(transcript).strip()
             
-            if transcript_text:
-                logger.info(f"✅ Voice transcription successful ({model_name}): '{transcript_text[:100]}...'")
-                return transcript_text
+            if raw_transcript:
+                from src.services.phonetic_normalizer import normalize_voice_transcript
+                normalized_text = normalize_voice_transcript(raw_transcript)
+                logger.info(f"✅ Voice transcription successful ({model_name}): '{normalized_text[:100]}...'")
+                return normalized_text
 
         except Exception as e:
             logger.warning(f"⚠️ Groq Whisper transcription failed with model '{model_name}': {e}")
