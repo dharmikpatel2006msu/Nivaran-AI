@@ -912,18 +912,50 @@
 
     <!-- Frontend Script -->
     <script>
-        const API_BASE_URL = 'http://localhost:8000/api/admin';
+        let API_BASE_URL = 'http://localhost:8005/api/admin';
+
+        async function detectAdminApiBase() {
+            const origin = window.location.origin;
+            const isHttpOrigin = origin && (origin.startsWith('http://') || origin.startsWith('https://')) && !origin.includes('null');
+            const candidates = [
+                ...(isHttpOrigin ? [origin] : []),
+                'http://localhost:8005',
+                'http://127.0.0.1:8005',
+                'http://localhost:8000',
+                'http://127.0.0.1:8000',
+                'http://localhost:5000',
+                'http://127.0.0.1:5000'
+            ];
+            const unique = [...new Set(candidates.filter(Boolean))];
+            for (const base of unique) {
+                if (!base || base.startsWith('file://')) continue;
+                try {
+                    const ctrl = new AbortController();
+                    const tid = setTimeout(() => ctrl.abort(), 600);
+                    const res = await fetch(`${base}/health`, { signal: ctrl.signal });
+                    clearTimeout(tid);
+                    if (res.ok) {
+                        API_BASE_URL = `${base}/api/admin`;
+                        return API_BASE_URL;
+                    }
+                } catch (e) {}
+            }
+            API_BASE_URL = isHttpOrigin ? `${origin}/api/admin` : 'http://localhost:8005/api/admin';
+            return API_BASE_URL;
+        }
+
         let allTickets = [];
         let allUsers = [];
         let activeView = 'tickets'; // 'tickets' or 'users'
         let currentFilter = 'all';
         let searchQuery = '';
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // Apply theme setting
             const savedTheme = localStorage.getItem('theme') || 'light';
             setTheme(savedTheme);
 
+            await detectAdminApiBase();
             fetchDashboardData();
             setInterval(fetchDashboardData, 30000);
         });
