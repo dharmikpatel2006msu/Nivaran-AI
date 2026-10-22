@@ -784,6 +784,9 @@
                 <button class="view-btn" id="view-users-btn" onclick="switchView('users')">
                     👤 All Customers & Chat Logs
                 </button>
+                <a href="/manager.html" class="view-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                    📦 Manager Portal ↗
+                </a>
             </div>
         </div>
 
@@ -943,7 +946,6 @@
             API_BASE_URL = isHttpOrigin ? `${origin}/api/admin` : 'http://localhost:8005/api/admin';
             return API_BASE_URL;
         }
-
         let allTickets = [];
         let allUsers = [];
         let activeView = 'tickets'; // 'tickets' or 'users'

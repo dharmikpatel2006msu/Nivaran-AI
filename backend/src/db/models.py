@@ -112,3 +112,59 @@ class AdminStats(BaseModel):
 class UserHistoryResponse(BaseModel):
     user: User
     messages: List[ChatMessage]
+
+
+class OrderStatusEnum(str, Enum):
+    """Allowed status values for customer orders."""
+    BOOKED = "Booked"
+    SHIPPED = "Shipped"
+    OUT_FOR_DELIVERY = "Out for Delivery"
+    DELIVERED = "Delivered"
+    RETURNED = "Returned"
+
+
+class OrderStatusUpdateRequest(BaseModel):
+    status: OrderStatusEnum = Field(..., description="Target status: Booked, Shipped, Out for Delivery, Delivered, Returned")
+
+
+class AdminOrderResponse(BaseModel):
+    order_id: str
+    customer_name: str
+    product_name: str
+    customer_email: Optional[str] = None
+    product_id: Optional[int] = None
+    quantity: int = 1
+    total: Optional[float] = None
+    status: str
+    created_at: Optional[str] = None
+    user_id: Optional[int] = None
+    telegram_id: Optional[int] = None
+    user_email: Optional[str] = None
+    email_notification_status: Optional[str] = None
+    email_notification_message: Optional[str] = None
+
+
+class CreateProductRequest(BaseModel):
+    name: str = Field(..., min_length=1, description="Product Name — required")
+    price: float = Field(..., gt=0, description="Price — required, numeric, and greater than zero")
+    description: Optional[str] = Field(None, description="Detailed product description")
+    stock: Optional[int] = Field(10, ge=0, description="Available inventory stock")
+    image_url: Optional[str] = Field(None, description="Product image URL")
+
+
+class AdminProductResponse(BaseModel):
+    id: int
+    name: str
+    price: float
+    description: Optional[str] = None
+    stock: int = 0
+    image_url: Optional[str] = None
+    is_active: bool = True
+    created_at: Optional[str] = None
+
+
+class ManagerStatsResponse(BaseModel):
+    total_orders: int
+    active_orders: int
+    total_products: int
+    active_products: int

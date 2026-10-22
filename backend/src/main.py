@@ -44,24 +44,37 @@ async def lifespan(app: FastAPI):
     logger.info("⚡ Nivaran AI Backend initializing...")
     global telegram_app
 
-    if TELEGRAM_BOT_TOKEN:
-        try:
-            telegram_app = setup_telegram_application()
-            if telegram_app:
-                await telegram_app.initialize()
-                await telegram_app.start()
+    # Verify and apply database schema on startup
+    try:
+        from src.db.postgres_client import run_migrations_if_needed
+        run_migrations_if_needed()
+        logger.info("📦 PostgreSQL database schema initialized successfully.")
+    except Exception as db_err:
+        logger.warning(f"⚠️ Database initialization notice: {db_err}")
 
-                if TELEGRAM_MODE == "polling":
-                    await telegram_app.updater.start_polling()
-                    logger.info("🚀 Telegram Bot running in polling mode.")
-                elif TELEGRAM_MODE == "webhook" and WEBHOOK_URL:
-                    webhook_endpoint = f"{WEBHOOK_URL.rstrip('/')}/api/telegram/webhook"
-                    await telegram_app.bot.set_webhook(url=webhook_endpoint)
-                    logger.info(f"🚀 Telegram Bot running in webhook mode at {webhook_endpoint}")
-        except Exception as e:
-            logger.error(f"❌ Failed to start Telegram Bot: {e}")
-    else:
-        logger.warning("⚠️ Running in REST API mode only (TELEGRAM_BOT_TOKEN not provided).")
+    async def _start_telegram_bg():
+        global telegram_app
+        if TELEGRAM_BOT_TOKEN:
+            try:
+                telegram_app = setup_telegram_application()
+                if telegram_app:
+                    await telegram_app.initialize()
+                    await telegram_app.start()
+
+                    if TELEGRAM_MODE == "polling":
+                        await telegram_app.updater.start_polling()
+                        logger.info("🚀 Telegram Bot running in polling mode.")
+                    elif TELEGRAM_MODE == "webhook" and WEBHOOK_URL:
+                        webhook_endpoint = f"{WEBHOOK_URL.rstrip('/')}/api/telegram/webhook"
+                        await telegram_app.bot.set_webhook(url=webhook_endpoint)
+                        logger.info(f"🚀 Telegram Bot running in webhook mode at {webhook_endpoint}")
+            except Exception as e:
+                logger.error(f"❌ Failed to start Telegram Bot: {e}")
+        else:
+            logger.warning("⚠️ Running in REST API mode only (TELEGRAM_BOT_TOKEN not provided).")
+
+    # Launch Telegram bot in background so web server starts immediately
+    asyncio.create_task(_start_telegram_bg())
 
     yield  # Server runs here
 
@@ -98,6 +111,8 @@ app.include_router(admin_router)
 app.include_router(store_router)
 app.include_router(voice_router)
 
+from fastapi.responses import FileResponse
+
 # Mount Static Frontends (Admin Panel & E-Commerce Storefront)
 frontend_dir = os.path.abspath(os.path.join(backend_dir, "..", "frontend"))
 if os.path.exists(os.path.join(frontend_dir, "admin")):
@@ -107,7 +122,58 @@ store_dir = os.path.join(frontend_dir, "src", "store") if os.path.exists(os.path
 if os.path.exists(store_dir):
     app.mount("/store", StaticFiles(directory=store_dir, html=True), name="store")
 
+# Mount Uploads directory for user-uploaded product images
+uploads_dir = os.path.abspath(os.path.join(frontend_dir, "uploads"))
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
+
+@app.get("/manager", include_in_schema=False)
+@app.get("/manager.html", include_in_schema=False)
+async def serve_manager_dashboard():
+    """Serves the Manager/Admin Dashboard interface."""
+    mgr_path = os.path.join(frontend_dir, "manager.html")
+    if not os.path.exists(mgr_path):
+        mgr_path = os.path.join(frontend_dir, "admin", "manager.html")
+    if os.path.exists(mgr_path):
+        return FileResponse(mgr_path, media_type="text/html")
+    raise HTTPException(status_code=404, detail="manager.html not found")
+
+
+@app.get("/admin.html", include_in_schema=False)
+async def serve_admin_html():
+    """Serves the Support Escalations Admin Panel."""
+    adm_path = os.path.join(frontend_dir, "admin", "index.html")
+    if os.path.exists(adm_path):
+        return FileResponse(adm_path, media_type="text/html")
+    raise HTTPException(status_code=404, detail="admin.html not found")
+
+
+@app.get("/store.html", include_in_schema=False)
+async def serve_store_html():
+    """Serves customer-facing store.html page."""
+    s_path = os.path.join(store_dir, "index.html")
+    if os.path.exists(s_path):
+        return FileResponse(s_path, media_type="text/html")
+    raise HTTPException(status_code=404, detail="Storefront not found")
+
+
+@app.get("/store.css", include_in_schema=False)
+async def serve_store_css():
+    """Serves storefront stylesheet."""
+    css_path = os.path.join(store_dir, "store.css")
+    if os.path.exists(css_path):
+        return FileResponse(css_path, media_type="text/css")
+    raise HTTPException(status_code=404, detail="store.css not found")
+
+
+@app.get("/store.js", include_in_schema=False)
+async def serve_store_js():
+    """Serves storefront JavaScript engine."""
+    js_path = os.path.join(store_dir, "store.js")
+    if os.path.exists(js_path):
+        return FileResponse(js_path, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="store.js not found")
 
 
 @app.get("/", tags=["Health Check"])
@@ -129,36 +195,24 @@ async def health_check():
 
 @app.get("/api/products", tags=["Storefront Products"])
 async def list_products():
-    """Retrieves all available products from the Supabase database with fallback."""
+    """Retrieves only active and available products directly from PostgreSQL database."""
+    try:
+        from src.db.postgres_client import get_active_products
+        prods = get_active_products()
+        if prods and len(prods) > 0:
+            return prods
+    except Exception as e:
+        logger.warning(f"⚠️ Could not fetch products from PostgreSQL: {e}")
+
     try:
         supabase = get_supabase_client()
-        res = supabase.table("products").select("*").order("id").execute()
+        res = supabase.table("products").select("*").eq("is_active", True).order("id").execute()
         if res.data and len(res.data) > 0:
             return res.data
     except Exception as e:
         logger.warning(f"⚠️ Could not fetch products from Supabase database: {e}")
 
-    # Fallback products matching migration 04 schema
-    return [
-        {
-            "id": 1,
-            "name": "Wireless Headphones",
-            "price": 99.99,
-            "description": "Premium noise-canceling wireless headphones with high-fidelity sound."
-        },
-        {
-            "id": 2,
-            "name": "Smartwatch",
-            "price": 149.99,
-            "description": "Next-gen fitness tracker and smartwatch with heart rate monitoring."
-        },
-        {
-            "id": 3,
-            "name": "Bluetooth Speaker",
-            "price": 59.99,
-            "description": "Portable waterproof Bluetooth speaker with deep bass."
-        }
-    ]
+    return []
 
 
 class CheckoutRequest(BaseModel):
@@ -168,24 +222,44 @@ class CheckoutRequest(BaseModel):
 
 @app.post("/api/checkout", tags=["Storefront Checkout"])
 async def checkout(payload: CheckoutRequest):
-    """Processes product checkout, inserts order into database, and generates Telegram deep link."""
+    """Processes product checkout, inserts order into PostgreSQL database, and generates Telegram deep link."""
     random_suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=5))
     order_id = f"ORD-{random_suffix}"
     now_iso = datetime.utcnow().isoformat()
 
+    # Insert into PostgreSQL orders table
+    try:
+        from src.db.postgres_client import execute_query
+        prod_rows = execute_query("SELECT price FROM products WHERE id = %s;", (payload.product_id,), fetch=True)
+        price = float(prod_rows[0]["price"]) if prod_rows else 0.0
+
+        execute_query(
+            """
+            INSERT INTO orders (id, customer_name, product_id, quantity, total, status, created_at)
+            VALUES (%s, %s, %s, 1, %s, 'Booked', CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO NOTHING;
+            """,
+            (order_id, payload.customer_name, payload.product_id, price),
+            fetch=False,
+            commit=True
+        )
+        logger.info(f"🛒 Order '{order_id}' persisted in PostgreSQL for product #{payload.product_id} (Customer: '{payload.customer_name}')")
+    except Exception as e:
+        logger.error(f"❌ Failed to insert order '{order_id}' into PostgreSQL: {e}")
+
+    # Fallback/mirrored insert into Supabase if configured
     try:
         supabase = get_supabase_client()
         order_data = {
             "id": order_id,
             "product_id": payload.product_id,
             "user_id": None,
-            "status": "processing",
+            "status": "Booked",
             "created_at": now_iso
         }
         supabase.table("orders").insert(order_data).execute()
-        logger.info(f"🛒 Order '{order_id}' created for product ID {payload.product_id} (Customer: '{payload.customer_name}')")
-    except Exception as e:
-        logger.error(f"❌ Failed to insert order '{order_id}' into Supabase: {e}")
+    except Exception:
+        pass
 
     # Resolve bot username from running Telegram bot client or config setting
     bot_name = TELEGRAM_BOT_USERNAME
