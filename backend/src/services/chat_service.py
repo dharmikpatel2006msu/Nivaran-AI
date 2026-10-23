@@ -6,7 +6,7 @@ LLM completion, message logging, and in-house escalation ticketing.
 
 import logging
 from datetime import datetime
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Optional
 from src.config import CHAT_HISTORY_WINDOW, SIMILARITY_THRESHOLD
 from src.db.supabase_client import get_supabase_client
 from src.rag.retriever import retrieve_context, get_user_active_orders
@@ -281,6 +281,115 @@ def validate_order_ownership(telegram_id: int, order_id: str) -> bool:
         return False
 
 
+def extract_order_product_info(order: Dict[str, Any]) -> Tuple[str, Optional[int], str]:
+    """Extracts product_name, product_id, and order_id from an order record."""
+    oid = order.get("order_id") or order.get("id") or ""
+    p_name = order.get("product_name")
+    p_id = order.get("product_id")
+
+    if not p_name and order.get("items"):
+        items = order.get("items")
+        if isinstance(items, list) and len(items) > 0:
+            first_item = items[0]
+            sp = first_item.get("store_products") or {}
+            p_name = sp.get("name") or first_item.get("product_name")
+            p_id = first_item.get("product_id")
+
+    if not p_name and order.get("products"):
+        prods = order.get("products")
+        if isinstance(prods, dict):
+            p_name = prods.get("name")
+            p_id = prods.get("id")
+
+    if not p_name:
+        p_name = "Product"
+
+    if not p_id:
+        p_low = p_name.lower()
+        if "clarion" in p_low:
+            p_id = 5
+        elif "earbud" in p_low:
+            p_id = 9
+        elif "aura" in p_low or "headphone" in p_low:
+            p_id = 1
+        elif "pulse" in p_low or "smartwatch" in p_low:
+            p_id = 2
+        elif "sonicboom" in p_low or "speaker" in p_low:
+            p_id = 3
+        elif "zenergo" in p_low or "keyboard" in p_low:
+            p_id = 4
+
+    return p_name, p_id, str(oid).upper()
+
+
+def resolve_focused_product(
+    query_text: str,
+    history_records: List[Dict[str, Any]],
+    user_orders: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """Resolves which product entity is the focus of the customer's query.
+
+    Checks:
+    1. Direct mention in query_text.
+    2. Referential pronouns ('this product', 'the item', 'it') resolving to:
+       a. Product mentioned in recent assistant or user messages (e.g. after order listing).
+       b. Single active order product if user only has 1 active product or order.
+       c. Primary order product linked via email verification.
+    """
+    import re
+    q_low = query_text.lower()
+
+    # 1. Direct explicit product name mentions in the query
+    if "clarion" in q_low:
+        return {"product_id": 5, "product_name": "Clarion HD Ergonomic Earbuds", "display": "Clarion HD Ergonomic Earbuds (Product ID 5)"}
+    if "aura" in q_low:
+        return {"product_id": 1, "product_name": "Aura Wireless Headphones", "display": "Aura Wireless Headphones (Product ID 1)"}
+    if "pulse" in q_low:
+        return {"product_id": 2, "product_name": "Pulse Fitness Smartwatch", "display": "Pulse Fitness Smartwatch (Product ID 2)"}
+    if "sonicboom" in q_low:
+        return {"product_id": 3, "product_name": "SonicBoom Bluetooth Speaker", "display": "SonicBoom Bluetooth Speaker (Product ID 3)"}
+    if "zenergo" in q_low:
+        return {"product_id": 4, "product_name": "ZenErgo Mechanical Keyboard", "display": "ZenErgo Mechanical Keyboard (Product ID 4)"}
+
+    # 2. Referential inquiry check
+    referential_tokens = [
+        "this product", "the product", "this item", "the item", "it", "its", "my item",
+        "about this", "these", "specifications", "specification", "specs", "details",
+        "manual", "warranty", "how to use", "guide", "features", "tell me more"
+    ]
+    is_referential = any(t in q_low for t in referential_tokens) or "earbud" in q_low
+
+    if is_referential or len(q_low.split()) <= 4:
+        # A. Look through recent chat history (e.g. last assistant message listing an order)
+        for msg in reversed(history_records):
+            content = msg.get("content", "")
+            match = re.search(r"\b(ORD-[A-Za-z0-9]+)\b", content, re.IGNORECASE)
+            if match:
+                oid = match.group(1).upper()
+                for o in user_orders:
+                    p_name, p_id, o_id = extract_order_product_info(o)
+                    if o_id == oid:
+                        return {
+                            "order_id": oid,
+                            "product_name": p_name,
+                            "product_id": p_id,
+                            "display": f"'{p_name}' (Product ID {p_id or 'N/A'} from Order #{oid})"
+                        }
+
+        # B. If customer has active orders (e.g. from email link verification)
+        if user_orders and len(user_orders) > 0:
+            first_order = user_orders[0]
+            p_name, p_id, o_id = extract_order_product_info(first_order)
+            return {
+                "order_id": o_id,
+                "product_name": p_name,
+                "product_id": p_id,
+                "display": f"'{p_name}' (Product ID {p_id or 'N/A'} from Order #{o_id})"
+            }
+
+    return None
+
+
 def process_incoming_message(
     telegram_id: int,
     user_display_name: str,
@@ -342,14 +451,19 @@ def process_incoming_message(
             if active_orders:
                 order_summaries = []
                 for o in active_orders:
+                    oid = o.get("order_id") or o.get("id")
                     items_str_list = []
-                    for item in o.get("items", []):
-                        p_name = (item.get("store_products") or {}).get("name", "Product")
-                        qty = item.get("quantity", 1)
-                        items_str_list.append(f"{p_name} (x{qty})")
+                    if o.get("items"):
+                        for item in o.get("items", []):
+                            p_name = (item.get("store_products") or {}).get("name") or item.get("product_name", "Product")
+                            qty = item.get("quantity", 1)
+                            items_str_list.append(f"{p_name} (x{qty})")
+                    elif o.get("product_name"):
+                        qty = o.get("quantity", 1)
+                        items_str_list.append(f"{o.get('product_name')} (x{qty})")
                     items_summary = ", ".join(items_str_list) if items_str_list else "Purchased Items"
                     order_summaries.append(
-                        f"📦 **Order #{o['id']}**\n"
+                        f"📦 **Order #{oid}**\n"
                         f"• **Status:** `{o.get('status', 'processing').title()}`\n"
                         f"• **Total:** `${float(o.get('total', 0)):.2f}`\n"
                         f"• **Items:** {items_summary}"
@@ -541,7 +655,7 @@ def process_incoming_message(
             formatted_orders_list = []
             for o in user_orders:
                 oid = o.get("order_id") or o.get("id")
-                p_name = o.get("product_name") or (o.get("products") or {}).get("name") or "Product"
+                p_name, _, _ = extract_order_product_info(o)
                 p_price = o.get("total") or (o.get("products") or {}).get("price") or ""
                 price_str = f" (${float(p_price):.2f})" if p_price else ""
                 ostatus = o.get("status", "Booked")
@@ -550,6 +664,13 @@ def process_incoming_message(
         else:
             active_orders_formatted = "No linked active orders found for this customer account."
 
+        # Step 3.0: Active Entity / Focused Product Resolution
+        focused_product = resolve_focused_product(message_text, history_records, user_orders)
+        focused_product_info = focused_product.get("display", "") if focused_product else ""
+        focused_product_id = focused_product.get("product_id") if focused_product else None
+        if focused_product:
+            logger.info(f"🎯 Resolved focused product: {focused_product_info}")
+
         # Step 3.1: Conversational Query Reformulation (Coreference Resolution & Contextual Disambiguation)
         search_query = reformulate_query(
             query_text=message_text,
@@ -557,8 +678,13 @@ def process_incoming_message(
             active_orders=user_orders
         )
 
-        # Step 3.2: RAG Vector Retrieval using the context-enriched query
-        docs, max_similarity = retrieve_context(search_query, match_threshold=SIMILARITY_THRESHOLD, match_count=3)
+        # Step 3.2: RAG Vector Retrieval using the context-enriched query and focused product re-ranking
+        docs, max_similarity = retrieve_context(
+            search_query,
+            match_threshold=SIMILARITY_THRESHOLD,
+            match_count=3,
+            focused_product_id=focused_product_id
+        )
 
         # Real-Time Direct Order Status Query Handling (Phase 6 Grounding)
         import re
@@ -642,7 +768,14 @@ def process_incoming_message(
             return _result(confirm_request_reply, search_query)
 
         # Step 4: Normal LLM Reply Generation (Non-escalated queries)
-        ai_reply = generate_llm_response(message_text, docs, formatted_history, active_orders_formatted)
+        ai_reply = generate_llm_response(
+            user_message=message_text,
+            context_documents=docs,
+            chat_history_formatted=formatted_history,
+            active_orders_formatted=active_orders_formatted,
+            focused_product_info=focused_product_info,
+            reformulated_query=search_query
+        )
         log_chat_message(user_id, "assistant", ai_reply)
         return _result(ai_reply, search_query)
     except Exception as e:
