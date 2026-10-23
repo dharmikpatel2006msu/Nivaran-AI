@@ -2,132 +2,247 @@
 category: product_catalog
 business: ecommerce_retail
 company_name: ShopNest
-last_updated: 2026-09-11
-version: 1.0
+last_updated: 2026-10-23
+version: 3.0
+purpose: static_product_knowledge_only
 ---
 
-# Product Catalog
+# ShopNest Product Knowledge Catalog
 
-This file covers everything related to product information, sizing, stock availability, pricing, and product authenticity for ShopNest. Each section below is written to be a self-contained chunk — it can be embedded independently without needing context from other sections.
+This document provides static product descriptions, general usage guidance, troubleshooting, care advice, and a **proposed warranty policy draft** for the products present in the supplied CSV. It is designed for retrieval-augmented generation (RAG).
 
-**Chunking convention:** Each `##` heading is one retrievable chunk. The HTML comment directly below each heading carries metadata your seed script should parse and store alongside the embedding (category, escalate flag, and a short list of trigger keywords useful for hybrid search/reranking).
+## Mandatory Rules for the RAG Assistant
 
----
+<!-- category: product_catalog | subtopic: grounding_rules | escalate: false | keywords: product information, product details, catalog, warranty, manual, availability, price -->
 
-## Product Sizing & Fit
+1. **This Markdown file is not the source of truth for dynamic fields.** Never store, repeat, or infer stock quantity, availability status, current price, discount, or purchasability from this file. Fetch these fields at answer time from the live PostgreSQL database/API using the product ID. If the database lookup fails, say that current price/availability cannot be confirmed.
+2. Resolve products by exact product ID/name from the database. Do not merge product ID `9` (`earbuds`) with product ID `5` (`Clarion HD Ergonomic Earbuds`). They are separate listings.
+3. Use the product descriptions below as the source-provided facts. Additional operation/care steps are **general guidance based on the product category**, not a verified manufacturer manual. Do not imply that a specific button, port, app, accessory, rating, or specification exists unless verified on the actual item/packaging/product page.
+4. Warranty durations below are a **proposed ShopNest default policy draft**, not verified existing coverage or a manufacturer warranty. Do not tell customers they are entitled to this coverage until ShopNest approves the policy and the product page/order record confirms it. Once approved, keep the live warranty policy in a versioned policy source and/or database, not only in this file.
+5. The supplied CSV does not specify currency, tax treatment, dimensions, exact model numbers, compatibility, in-box contents, manufacturer, regulatory certifications, or official manual URLs. Do not invent them.
+6. If the customer reports a safety issue, overheating, swelling battery, smoke, burning smell, electric shock, or a materially misrepresented/defective product, advise them to stop using/charging the item when safe and escalate to a human agent. Do not diagnose hardware remotely.
+7. Chunking convention: each `##` heading is intended to be a self-contained retrieval chunk. The HTML comment directly below each heading contains metadata for hybrid retrieval/reranking.
 
-<!-- category: product_catalog | subtopic: sizing | escalate: false | keywords: size chart, what size should I order, sizing guide, fit issues -->
+## Supported Product List (Static Identity Only)
 
-Every apparel and footwear listing includes a **Size Chart** link directly below the size selector on the product page, showing measurements in both inches and centimeters. Sizing can vary by brand — a ShopNest private-label "Medium" may not match a brand partner's "Medium" exactly — so the product-specific chart should always be checked rather than relying on general size familiarity.
+<!-- category: product_catalog | subtopic: product_list | escalate: false | keywords: what products do you sell, headphones, smartwatch, speaker, keyboard, earbuds -->
 
-For footwear, ShopNest lists both **UK/India** and **US** sizing side by side on the chart, since customers sometimes default to whichever system they're used to and order the wrong size as a result. Customer reviews on the product page often include fit feedback (e.g., "runs small," "true to size") which can supplement the chart, especially for brands with known fit inconsistencies.
+The supplied CSV has these six product records:
 
-If a customer receives an item and it doesn't fit as expected, this falls under the standard return/exchange process (see the Returns & Refunds file), not a catalog issue — there is no separate "wrong fit" resolution path outside of standard returns.
+- Product ID 1 — **Aura Wireless Headphones**
+- Product ID 2 — **Pulse Fitness Smartwatch**
+- Product ID 3 — **SonicBoom Bluetooth Speaker**
+- Product ID 4 — **ZenErgo Mechanical Keyboard**
+- Product ID 5 — **Clarion HD Ergonomic Earbuds**
+- Product ID 9 — **earbuds** (generic listing name; sparse description)
 
-**Sample customer question:** "I usually wear a Medium, will that fit me in this brand?"
-**Sample answer:** "It's best to check the size chart on the specific product page, since sizing can vary between brands — a Medium in one brand may not match another. If you let me know the product, I can point you to its chart, and product reviews often mention if an item runs small or large."
+This list describes known catalog identities only. For current price, stock, status, sale eligibility, and whether an order can be placed, query the live database. Do not add products to this list unless the catalog data is updated.
 
----
+## Aura Wireless Headphones — Product Guide
 
-## Checking Stock Availability
+<!-- category: product_catalog | subtopic: product_aura_wireless_headphones | escalate: false | keywords: Aura headphones, wireless headphones, active noise cancelling, ANC, 40 hour battery, spatial audio, pairing, charging, troubleshooting, warranty -->
 
-<!-- category: product_catalog | subtopic: stock_availability | escalate: false | keywords: out of stock, back in stock, when available, notify me stock -->
+### Verified listing description
 
-Stock availability is shown in real time on the product page. If a specific size or color is unavailable, it appears greyed out in the selector, while the product itself may still be orderable in other variants. For fully out-of-stock products, customers can tap **"Notify Me"** to receive an email or app notification when the item is restocked — there is no guaranteed restock date, since this depends on the brand partner's supply.
+Product ID: `1`. The CSV describes this product as: **“Active noise cancelling wireless headphones with 40h battery life and spatial audio.”** The 40-hour figure is the listing claim; actual runtime can vary with volume, feature settings, battery age, and usage. The listing does not specify a manufacturer, model number, connection protocol/version, supported codecs, charging connector, exact ANC modes, microphone features, foldability, or included accessories.
 
-Some products marked "Only X left" reflect real-time warehouse inventory and can sell out between browsing and checkout, particularly during sale events; in this case the item is automatically removed from the cart with a notification, rather than allowing an order to be placed for stock that no longer exists.
+### General user guide (not an official model-specific manual)
 
-ShopNest does not accept advance orders or reservations for out-of-stock items outside the "Notify Me" system, and cannot provide specific restock timelines beyond what's shown on the page, if anything.
+- **Before first use:** Inspect the headphones and cable/accessories supplied in the actual box. Read any printed safety and charging instructions. Charge using the supplied or manufacturer-recommended cable/power source; do not use damaged cables.
+- **Pairing:** Put the headphones into pairing mode using the instructions printed on the device or in its packaging. On the phone/computer, open Bluetooth settings and select the device name shown by the headphones. The exact button sequence and LED meanings are model-specific and are not present in the catalog data.
+- **Active noise cancellation:** If the device provides an ANC control, follow the physical/manual instructions to enable or disable it. ANC performance varies by fit and environment; it does not make the user immune to traffic, alarms, or other hazards. Stay aware of surroundings when walking or cycling.
+- **Spatial audio:** Availability and behavior depend on the headphones and playback device/app. If the effect is not available, verify the supported app/device settings instead of assuming every source supports it.
+- **Battery care:** Avoid heat, moisture, crushing, or leaving the product in a hot vehicle. If the battery becomes swollen, unusually hot, leaks, or smells burnt, stop using/charging it if safe and contact support.
+- **Cleaning/storage:** Wipe exterior surfaces with a soft, dry cloth. Do not immerse the headphones or spray cleaner into openings. Store dry and away from extreme temperatures.
 
-**Sample customer question:** "This item shows out of stock, when will it be back?"
-**Sample answer:** "I don't have a specific restock date, since that depends on the brand partner's supply — but you can tap 'Notify Me' on the product page and you'll get an alert as soon as it's back in stock."
+### Basic troubleshooting
 
----
+- **Does not appear in Bluetooth:** Charge it, move it close to the source device, turn Bluetooth off/on on the source device, and follow the model's documented pairing/reset sequence. Forget the old pairing and retry only if needed. Do not guess a reset button combination.
+- **No sound:** Check source-device volume and output selection, verify the selected Bluetooth device, and test with another audio source.
+- **Short battery life:** Fully charge it according to its instructions; high volume and ANC/spatial-audio features can affect runtime. If the runtime remains far below the advertised claim, collect order details and escalate.
+- **ANC or spatial audio not working:** Confirm the feature is enabled and the playback device/app supports the relevant function. Escalate if the advertised feature appears defective.
 
-## Pricing & Price Changes
+### Warranty policy draft — requires ShopNest approval
 
-<!-- category: product_catalog | subtopic: pricing | escalate: false | keywords: price dropped, price match, why did price change, price after I ordered -->
+**Proposed default:** 12 months limited warranty from delivery for manufacturing defects, subject to final approved terms and applicable law. Do not represent this as current coverage until approved and confirmed against the order/product record. Suggested exclusions for policy review: accidental/impact damage, liquid damage, misuse, unauthorized repair/modification, normal cosmetic wear, consumables, and damage caused by unsupported accessories. These exclusions must be reviewed by ShopNest and must not override statutory customer rights. Proof of purchase and product inspection may be requested under the final policy.
 
-Product prices on ShopNest can change at any time due to promotions, demand, or brand partner pricing updates, and the price shown at the time of **checkout** is the price the customer pays — ShopNest does not retroactively charge or refund the difference if a price changes after an order is placed. Similarly, if a price drops shortly after a customer completes a purchase, ShopNest does not offer a price-match adjustment or partial refund for that difference.
+### Sample answer
 
-The price displayed for an item is locked in only once payment is completed; adding an item to a cart or wishlist does not reserve its current price. During flash sales or limited-time promotions, prices may revert to standard pricing once the promotion ends or stock allocated for the sale price runs out, even if the item remains in the customer's cart.
+“ The listing describes Aura Wireless Headphones as wireless headphones with active noise cancellation, a stated 40-hour battery life, and spatial audio. I can check the live listing for current price and availability. For pairing or charging, please follow the instructions supplied with your exact unit, as the detailed button sequence is not included in our catalog data.”
 
-All prices shown are inclusive of applicable GST unless stated otherwise on the product page; no separate tax is added at checkout beyond what's already reflected in the listed price.
+## Pulse Fitness Smartwatch — Product Guide
 
-**Sample customer question:** "I bought this yesterday and now it's ₹200 cheaper, can I get the difference refunded?"
-**Sample answer:** "I'm sorry, but we're not able to refund or adjust for price changes after an order is placed — the price at checkout is what's locked in for that purchase. I know that's frustrating when a price drops soon after, and I appreciate you flagging it."
+<!-- category: product_catalog | subtopic: product_pulse_fitness_smartwatch | escalate: false | keywords: Pulse smartwatch, fitness watch, AMOLED, heart rate, GPS, waterproof, pairing, charging, health tracking, troubleshooting, warranty -->
 
----
+### Verified listing description
 
-## Product Authenticity & Sourcing
+Product ID: `2`. The CSV describes it as: **“Waterproof fitness smartwatch with AMOLED display, heart rate tracking, and GPS.”** The CSV does not specify an IP/ATM rating, swim suitability, supported phone operating systems, companion app, battery runtime, charging method, sensor accuracy, medical certifications, strap size, or exact GPS mode. Do not describe its readings as medical diagnosis or treatment advice.
 
-<!-- category: product_catalog | subtopic: authenticity | escalate: false | keywords: is this genuine, fake product, authentic, counterfeit -->
+### General user guide (not an official model-specific manual)
 
-All products listed on ShopNest are sourced either **directly from authorized brand partners** or manufactured under ShopNest's own private label lines, which are clearly marked as such on the product page under "Sold by." ShopNest does not operate an open third-party marketplace model, meaning listings are not created by unverified individual sellers, which is a common source of counterfeit risk on other platforms.
+- **Setup:** Identify the official companion app and compatibility instructions from the packaging or verified product page before installing an app. Pair through the documented setup flow; do not invent an app name or QR-code destination.
+- **Fit and heart-rate tracking:** Wear the watch snugly but comfortably, with the sensor in contact with the skin. Movement, fit, skin characteristics, and environmental conditions can affect readings. Treat heart-rate data as wellness information, not a medical diagnosis.
+- **GPS:** GPS may need an unobstructed view of the sky and time to acquire a signal. Outdoor buildings, trees, weather, and device settings can affect performance. The listing does not say whether GPS works independently or requires a paired phone.
+- **Water exposure:** The listing uses the word “waterproof” but provides no rating or activity limits. Do not promise that it is suitable for swimming, diving, hot showers, or salt/chlorinated water. Ask the customer to check the exact model label/manual before water exposure; avoid charging a wet device.
+- **Charging and care:** Use the supplied/approved charging equipment and keep charging contacts clean and dry. Do not force a connector or use a damaged charger. Clean the body with a soft cloth and follow the product's own strap-cleaning instructions.
+- **Comfort and safety:** Stop wearing it if it causes irritation. Keep it away from extreme heat. If the device becomes unusually hot, swells, or shows battery damage, stop using/charging it if safe and contact support.
 
-Every product page displays its seller/brand information, and for branded items, this will show the authorized brand partner name rather than a generic third-party seller. Customers can additionally look for the "Authenticity Guaranteed" badge, shown on eligible branded electronics and accessories, which indicates the item ships with manufacturer warranty documentation.
+### Basic troubleshooting
 
-If a customer receives an item they believe is not authentic (e.g., missing brand packaging, inconsistent build quality, mismatched serial numbers on electronics), this is treated as a product quality concern and should be escalated — see the Suspected Counterfeit or Misrepresented Product section below, rather than resolved as a routine catalog question.
+- **Not pairing:** Confirm phone compatibility using the verified product page, enable Bluetooth, keep devices close, and follow the official pairing instructions. Restarting the phone/watch may help if the manual permits it.
+- **GPS inaccurate or unavailable:** Move to an open outdoor area, allow time for signal acquisition, and check location permissions/settings in the companion app if applicable.
+- **Heart-rate readings inconsistent:** Adjust fit, clean the sensor area, remain still briefly, and compare repeated readings. Do not use the watch to make urgent medical decisions.
+- **Display or charging issue:** Check charging alignment and approved accessories. If the watch remains unresponsive after the documented charging procedure, escalate rather than suggesting an undocumented factory reset.
 
-**Sample customer question:** "How do I know this isn't a fake or knockoff version?"
-**Sample answer:** "All our products come either directly from authorized brand partners or our own private label lines — we don't run an open marketplace where unverified sellers can list items, which is a common source of counterfeits elsewhere. You can check the 'Sold by' info on the product page to see the source."
+### Warranty policy draft — requires ShopNest approval
 
----
+**Proposed default:** 12 months limited warranty from delivery for manufacturing defects, subject to final approved terms, the exact product record, and applicable law. This is a proposal, not verified current coverage. Any exclusions, claim process, repair/replacement remedy, and treatment of straps/battery must be defined in the approved policy and shown to the customer before relying on them.
 
-## Product Warranty Information
+### Sample answer
 
-<!-- category: product_catalog | subtopic: warranty | escalate: false | keywords: warranty, warranty period, warranty claim, product guarantee -->
+“The listing describes Pulse Fitness Smartwatch as having an AMOLED display, heart-rate tracking, GPS, and a waterproof design. The catalog does not provide a water-resistance rating or phone compatibility list, so I would verify those details on the exact product page before advising on swimming or setup.”
 
-Warranty coverage varies by product and is listed explicitly on the product page under **"Warranty"** — most electronics accessories carry a **6-month to 1-year manufacturer warranty**, while apparel, footwear, and home goods generally do not carry a warranty beyond the standard return window. ShopNest facilitates warranty claims for eligible products but the warranty itself is typically honored by the brand/manufacturer, not ShopNest directly.
+## SonicBoom Bluetooth Speaker — Product Guide
 
-To initiate a warranty claim, customers should go to **My Orders > Order Details > Warranty Claim** (visible only on orders past the standard return window but within the warranty period) and describe the issue; this is different from a return, since it addresses a defect arising after normal use rather than dissatisfaction with the item.
+<!-- category: product_catalog | subtopic: product_sonicboom_bluetooth_speaker | escalate: false | keywords: SonicBoom speaker, Bluetooth speaker, waterproof speaker, 360 degree sound, bass, pairing, charging, audio troubleshooting, warranty -->
 
-Warranty claims typically take longer to resolve than standard returns, since they may involve the manufacturer's own inspection process rather than ShopNest's warehouse quality check — exact timelines vary by brand and are communicated once the claim is reviewed.
+### Verified listing description
 
-**Sample customer question:** "My earphones stopped working after 3 months, are they still under warranty?"
-**Sample answer:** "It depends on the product, but most electronics accessories carry a 6-month to 1-year warranty — you can check the exact period on the product page under 'Warranty.' If you're within that window, you can file a claim from My Orders > Order Details > Warranty Claim."
+Product ID: `3`. The CSV describes it as: **“Compact waterproof Bluetooth speaker delivering 360-degree immersive bass sound.”** No exact water-resistance rating, battery life, charging connector, Bluetooth version/range, power output, microphone, stereo-pairing capability, buttons, or in-box accessories are specified.
 
----
+### General user guide (not an official model-specific manual)
 
-## Product Descriptions & Specifications
+- **Initial setup:** Check the unit and included accessories. Charge it only as described in the supplied instructions; keep charging ports/covers dry and correctly closed as specified by the manufacturer.
+- **Bluetooth pairing:** Activate pairing mode using the device's own labels/manual, then choose the displayed speaker name in the phone/computer Bluetooth menu. Exact button presses and indicator-light meanings are model-specific.
+- **Sound quality:** Place the speaker on a stable surface with space around it. Keep the source device within practical Bluetooth range and reduce volume if sound distorts. “360-degree” is a listing description, not a guarantee of identical sound in every room or position.
+- **Water safety:** Although the listing calls it waterproof, no rating or submersion limit is supplied. Do not recommend swimming, diving, saltwater use, or submersion without verifying the manufacturer's rating. Never charge a wet speaker; dry it according to the official instructions first.
+- **Cleaning/storage:** Disconnect power before cleaning. Use a soft cloth and avoid solvents or spraying liquids into openings. Store dry and away from direct heat.
+- **Hearing safety:** Increase volume gradually and avoid prolonged high-volume listening.
 
-<!-- category: product_catalog | subtopic: descriptions | escalate: false | keywords: product specs, material, dimensions, what's included in the box -->
+### Basic troubleshooting
 
-Product pages include a **Specifications** tab listing material composition, dimensions, weight, and other technical details specific to the product category (e.g., battery capacity for electronics, fabric composition for apparel). The **"What's in the Box"** section lists every item included with a purchase, which is especially relevant for products with accessories or bundled components.
+- **Cannot connect:** Charge the speaker, keep it close to the source, remove stale pairing on the source device, and follow the documented pairing sequence.
+- **Connected but silent:** Check media volume, output selection, and whether another device is already connected.
+- **Distorted sound:** Lower the speaker and source volumes, test a different audio source, and move the speaker away from obstructions.
+- **Won't charge or power on:** Check the approved cable/power source and inspect for damage. Do not use the speaker if it is hot, swollen, smells burnt, or has water inside; escalate.
 
-Specification details are provided directly by the brand or manufacturer and are generally accurate, but minor variations (e.g., slight color differences due to screen display settings, or small dimensional tolerances in manufacturing) can occur and are considered normal rather than a defect.
+### Warranty policy draft — requires ShopNest approval
 
-If a customer finds a significant, factual discrepancy between the listed specifications and the received product (e.g., wrong material entirely, missing a major component that was listed as included), this should be treated under the Suspected Counterfeit or Misrepresented Product section, not resolved as a simple description clarification.
+**Proposed default:** 12 months limited warranty from delivery for manufacturing defects, subject to approval, the exact product record, and applicable law. This is not a verified manufacturer warranty. ShopNest must approve the coverage, exclusions, remedies, and claim process before the support bot promises coverage.
 
-**Sample customer question:** "What's actually included in the box for this product?"
-**Sample answer:** "You can check the 'What's in the Box' section on the product page — it lists every item included with the purchase. If you tell me the product, I can help point you to the relevant section."
+### Sample answer
 
----
+“The SonicBoom listing describes a compact waterproof Bluetooth speaker with 360-degree sound and bass. The catalog does not include its exact water-resistance rating or battery runtime, so those details should be checked against the verified product page/manual for your unit.”
 
-## Product Reviews & Ratings
+## ZenErgo Mechanical Keyboard — Product Guide
 
-<!-- category: product_catalog | subtopic: reviews | escalate: false | keywords: leave a review, product rating, how to review, review not showing -->
+<!-- category: product_catalog | subtopic: product_zenergo_mechanical_keyboard | escalate: false | keywords: ZenErgo keyboard, mechanical keyboard, RGB, tactile switches, hot swap, wrist rest, wireless pairing, keyboard troubleshooting, warranty -->
 
-Customers can leave a review and star rating on any product from a **delivered order**, accessible via **My Orders > Order Details > Write a Review**. Reviews are only enabled after delivery confirmation to ensure they reflect an actual purchase experience, and can include photos alongside written feedback.
+### Verified listing description
 
-Submitted reviews typically appear on the product page within **24 to 48 hours** after passing an automated moderation check, which screens for spam, offensive language, and personal information before publishing. A review not appearing after 48 hours may have been flagged during moderation; ShopNest does not publish reviews that fail this check, and does not provide individual explanations for moderation decisions.
+Product ID: `4`. The CSV describes it as: **“RGB tactile wireless mechanical keyboard with hot-swappable switches and wrist rest.”** The listing does not specify keyboard layout/language, supported operating systems, wireless protocol, wired mode, battery life, switch brand/type, keycap material, RGB software, hot-swap socket compatibility, or whether the wrist rest is detachable/included as a separate item. The description mentions a wrist rest but the box contents should still be verified on the product page.
 
-Reviews cannot be edited after submission but can be deleted and resubmitted by the customer if they want to revise their feedback, via the same **Write a Review** section on the relevant order.
+### General user guide (not an official model-specific manual)
 
-**Sample customer question:** "I left a review two days ago and it's still not showing up."
-**Sample answer:** "Reviews usually go live within 24–48 hours after passing our moderation check for spam and inappropriate content. If it's been longer than that, it may not have passed moderation — unfortunately we're not able to share the specific reason in that case."
+- **Connection:** Confirm the exact connection method and supported operating systems from the product page or package. If wireless, follow the documented pairing instructions and verify any required receiver or charging procedure. Do not assume it supports both Bluetooth and a USB receiver.
+- **Typing and layout:** Check the physical key layout and operating-system keyboard language setting if symbols do not match what appears on screen.
+- **RGB lighting:** Use only the documented onboard controls or verified companion software. Do not invent keyboard shortcuts or recommend downloading unofficial configuration tools.
+- **Hot-swappable switches:** Switch replacement is a hardware task. Disconnect the keyboard and power it off first. Use a compatible switch and the correct puller only if the manufacturer confirms compatibility. Avoid bending pins or forcing a switch. If the user is unsure, recommend a qualified technician or support rather than disassembly.
+- **Cleaning:** Disconnect power/receiver as applicable. Turn the keyboard off before cleaning. Use a soft brush or dry cloth; avoid pouring liquid onto the keys. Remove keycaps/switches only if permitted by the official manual.
+- **Wrist rest and ergonomics:** Position the keyboard and wrist rest so wrists remain relaxed and relatively straight. Take regular breaks; the wrist rest should support pauses rather than force pressure while typing.
 
----
+### Basic troubleshooting
 
-## Suspected Counterfeit or Misrepresented Product
+- **Keyboard not detected:** Check power/charge, the documented connection mode, receiver/port if supplied, and pairing steps. Test another USB port or compatible device where appropriate.
+- **Repeated or missed keys:** Check connection and battery if wireless, then test the affected key. For hot-swappable switches, do not remove parts until the official instructions and warranty implications are clear.
+- **Wrong characters:** Check the computer's keyboard layout/input language.
+- **RGB not working:** Check whether lighting can be disabled by settings and use only documented controls/software.
+- **Keys feel inconsistent after switch replacement:** Stop forcing the switch; check compatibility and pin alignment according to the manual, or seek support.
 
-<!-- category: product_catalog | subtopic: counterfeit_dispute | escalate: true | keywords: fake product received, counterfeit, product not as described, wrong material received, serial number mismatch -->
+### Warranty policy draft — requires ShopNest approval
 
-Reports where a customer believes they received a **counterfeit, significantly misrepresented, or materially different product** than what was listed (e.g., wrong material entirely, mismatched serial number on electronics, missing major advertised components, or visibly different build quality than shown) **should always be escalated to a human support agent**, not resolved through a policy explanation alone. These claims require manual verification against the original listing, brand partner records, and often photo evidence, which the bot cannot assess on its own.
+**Proposed default:** 12 months limited warranty from delivery for manufacturing defects, subject to approval, exact product record, and applicable law. Do not imply that customer-installed switches, physical damage, liquid damage, or unauthorized modifications are automatically covered or excluded; the final policy must explicitly define these cases and preserve statutory rights.
 
-The bot should acknowledge the concern seriously without confirming or denying authenticity itself, ask the customer to keep the product, packaging, and any tags or documentation until the ticket is resolved, and confirm that a support ticket has been raised for review. It should avoid speculating on whether the product is genuinely counterfeit, since an incorrect statement here could create legal or brand-partner complications — that determination belongs to the team reviewing the case.
+### Sample answer
 
-**Escalation threshold:** This is escalate-eligible on the first report, with no repeat-message requirement, similar to delivery disputes and refund disputes — authenticity concerns carry reputational and trust risk that warrants immediate human review rather than automated resolution.
+“The ZenErgo listing describes a wireless mechanical keyboard with RGB lighting, tactile switches, hot-swappable switches, and a wrist rest. The listing does not specify the layout, connection protocol, operating-system compatibility, or supported replacement switches, so those should be verified before recommending a particular setup or switch purchase.”
 
-**Sample customer question:** "I think this watch I received is fake, the logo looks different from the pictures and it feels cheap."
-**Sample answer:** "I understand that's concerning, and I want to make sure this gets looked at properly. I've raised a ticket with our team to review this — please hold onto the product, box, and any tags or documentation in the meantime, since they'll need those for verification. Could you share your order number so I can attach it to the ticket?"
+## Clarion HD Ergonomic Earbuds — Product Guide
+
+<!-- category: product_catalog | subtopic: product_clarion_hd_ergonomic_earbuds | escalate: false | keywords: Clarion earbuds, true wireless earbuds, dual mic noise suppression, instant pairing, charging case, pairing, audio troubleshooting, warranty -->
+
+### Verified listing description
+
+Product ID: `5`. The CSV describes it as: **“True wireless in-ear earbuds with dual mic noise suppression and instant pairing.”** The CSV does not specify battery life, charging-case capacity, connector, water/sweat rating, supported codecs, active noise cancellation, touch controls, voice assistant support, or included ear-tip sizes. “Dual mic noise suppression” should not be restated as active noise cancellation for the listener; the listing does not say that.
+
+### General user guide (not an official model-specific manual)
+
+- **First use:** Check the package for the earbuds, case, charging cable, and any ear tips actually supplied. Remove any protective shipping films only if present and follow the package's first-charge instructions.
+- **Pairing:** Charge the case/earbuds as directed, then follow the exact pairing steps from the supplied guide. On the phone, select the device name that appears. If the earbuds do not enter pairing mode, do not guess a touch-control sequence; check the official instructions.
+- **Fit and audio:** Use only the ear tips supplied and choose a comfortable fit. Keep volume moderate. Microphone noise suppression may help outgoing voice clarity but is not a promise of complete noise removal.
+- **Charging:** Keep contacts clean and dry. Place each earbud correctly in its case and confirm the charging indicator according to the manual. Do not use a damaged cable or charge wet earbuds.
+- **Cleaning:** Wipe exterior surfaces with a dry, soft cloth. Remove earwax carefully without pushing debris into the speaker mesh. Do not immerse the earbuds or use sharp tools/liquid inside openings.
+- **Battery safety:** If an earbud or case becomes unusually hot, swollen, leaks, or smells burnt, stop using/charging it if safe and contact support.
+
+### Basic troubleshooting
+
+- **Only one earbud plays:** Return both earbuds to the case, check charging contacts, and follow the documented re-sync procedure. Do not invent a reset gesture.
+- **Pairing fails:** Charge the earbuds, remove an old Bluetooth pairing from the source device, restart Bluetooth, and follow the exact model-specific pairing steps.
+- **Microphone sounds unclear:** Check microphone openings for blockage, reduce wind/background noise, and test a supported calling app. Do not claim a particular app or setting is supported without verification.
+- **Battery drains quickly:** Confirm full charging and that the case/contacts are clean. If runtime is consistently abnormal, escalate with order details.
+
+### Warranty policy draft — requires ShopNest approval
+
+**Proposed default:** 6 months limited warranty from delivery for manufacturing defects, subject to ShopNest approval, the exact product record, and applicable law. This duration is a proposed policy recommendation only; it is not established by the supplied CSV. The final policy should define coverage for earbuds versus the charging case and accessories, battery-related claims, and exclusions without overriding statutory rights.
+
+### Sample answer
+
+“The listing describes Clarion HD Ergonomic Earbuds as true wireless in-ear earbuds with dual-microphone noise suppression and instant pairing. It does not specify battery life, water resistance, or active noise cancellation, so I would not confirm those features without checking the exact product documentation.”
+
+## Earbuds — Generic Listing Guide
+
+<!-- category: product_catalog | subtopic: product_generic_earbuds | escalate: false | keywords: earbuds generic listing, product id 9, earbuds features, earbuds manual, earbuds warranty -->
+
+### Verified listing description
+
+Product ID: `9`. The product name is exactly **“earbuds”** and the description is **“best price selling product.”** This record contains no reliable details about wired/wireless operation, brand/model, microphone, sound features, charging, compatibility, water resistance, included items, or controls. Do not borrow features from Clarion HD Ergonomic Earbuds or any other listing.
+
+### Customer guidance
+
+Because the listing is underspecified, the assistant should not provide a model-specific user manual or claim a particular setup procedure. Ask the customer for the product page/order details or refer them to a human agent who can identify the exact unit from its packaging/model label. If the customer already has the item, ask them to check the printed insert/manual and the model number before following generic earbuds instructions.
+
+### Warranty policy draft — requires ShopNest approval
+
+**Proposed default:** 6 months limited warranty from delivery for manufacturing defects, subject to ShopNest approval and confirmation against the exact product record. Because the listing does not identify the make/model, do not promise coverage until the product identity and approved warranty are verified. This proposal is not a current warranty statement.
+
+### Sample answer
+
+“Our catalog has a separate listing named ‘earbuds,’ but its description does not provide enough detail to confirm the connection type, controls, features, or compatible devices. I can help verify the exact item from its product page or order details before giving you the correct instructions.”
+
+## Warranty Handling — Assistant Rules
+
+<!-- category: product_catalog | subtopic: warranty_handling | escalate: false | keywords: warranty period, warranty claim, repair, replacement, defective product, warranty coverage -->
+
+The product sections contain proposed warranty durations for policy planning only. They must not be treated as approved customer-facing policy unless ShopNest has explicitly approved them. For every warranty question:
+
+1. Fetch the warranty duration and terms from the approved live policy/product/order source, if configured.
+2. Confirm purchase/delivery date and product identity from the order record when authorized.
+3. Explain only the verified coverage, limitations, claim steps, and expected next action.
+4. If no approved warranty data is available, say that the exact warranty cannot be confirmed from the current catalog and offer human support.
+5. Never guarantee repair, replacement, refund, or a resolution date before the authorized team confirms it.
+6. Do not tell customers to disassemble a device, bypass safety features, or perform risky repairs.
+
+## Product Manual and Safety Escalation
+
+<!-- category: product_catalog | subtopic: manual_escalation | escalate: true | keywords: user manual, setup instructions, product not working, overheating, battery swelling, electric shock, safety issue -->
+
+No official model-specific user manual or manufacturer document was included in the supplied CSV. The usage guides in this file are general category-level guidance, not official manuals. If a customer asks for an exact button combination, LED meaning, factory reset, firmware update, app download, supported replacement part, water-resistance rating, or detailed repair procedure, verify the official manual for the exact model before answering. Do not invent URLs or claim that a manual was supplied.
+
+Escalate to a human support agent when:
+- the customer reports smoke, burning smell, overheating, battery swelling/leakage, electric shock, or other safety concerns;
+- a product appears materially different from the listing or may be defective;
+- the model cannot be identified well enough to give safe instructions;
+- the customer needs a warranty determination and the approved policy/order data is unavailable;
+- troubleshooting would require opening the product, replacing internal components, or performing an undocumented reset.
+
+The assistant must not claim that a support ticket has been created unless the ticketing system confirms creation.
