@@ -63,7 +63,9 @@ def generate_llm_response(
     user_message: str,
     context_documents: List[Dict[str, Any]],
     chat_history_formatted: str = "",
-    active_orders_formatted: str = ""
+    active_orders_formatted: str = "",
+    focused_product_info: str = "",
+    reformulated_query: str = ""
 ) -> str:
     """Generates a contextual response using Groq LLMs with automatic fallbacks.
 
@@ -72,12 +74,19 @@ def generate_llm_response(
         context_documents: Retrieved knowledge docs from pgvector.
         chat_history_formatted: Formatted recent conversation window string.
         active_orders_formatted: Formatted list of customer active orders.
+        focused_product_info: Optional entity focus information.
+        reformulated_query: Optional rewritten query for context grounding.
 
     Returns:
         Cleaned LLM response text.
     """
     context_text = "\n\n".join([doc.get("content", "") for doc in context_documents]) if context_documents else ""
-    system_prompt = build_system_prompt(context_text, chat_history_formatted, active_orders_formatted)
+    system_prompt = build_system_prompt(
+        context_text,
+        chat_history_formatted,
+        active_orders_formatted,
+        focused_product_info=focused_product_info
+    )
 
     models_to_try = [
         LLM_MODEL,

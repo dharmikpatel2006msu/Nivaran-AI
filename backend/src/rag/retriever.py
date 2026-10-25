@@ -7,7 +7,7 @@ Original logic:
 """
 
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import google.genai as genai
 from src.config import (
     GEMINI_API_KEY,
@@ -71,7 +71,8 @@ def generate_embedding(text: str) -> List[float]:
 def retrieve_context(
     query_text: str,
     match_threshold: float = SIMILARITY_THRESHOLD,
-    match_count: int = 3
+    match_count: int = 3,
+    focused_product_id: Optional[int] = None
 ) -> Tuple[List[Dict[str, Any]], float]:
     """Queries Supabase pgvector database using cosine similarity.
 
@@ -105,6 +106,15 @@ def retrieve_context(
         # Attempt RPC call; if stored proc not created yet, handle fallback gracefully
         response = supabase.rpc("match_documentation", rpc_params).execute()
         documents = response.data or []
+
+        # If a specific product ID is in focus, prioritize the chunk directly matching it
+        if focused_product_id and documents:
+            target_marker = f"Product ID: `{focused_product_id}`"
+            exact_matches = [d for d in documents if target_marker in d.get("content", "")]
+            other_matches = [d for d in documents if target_marker not in d.get("content", "")]
+            if exact_matches:
+                # Place exact product match at index 0
+                documents = exact_matches + other_matches
 
         max_similarity = 0.0
         if documents:

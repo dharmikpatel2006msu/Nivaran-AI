@@ -13,7 +13,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from src.config import TELEGRAM_BOT_TOKEN
-from src.services.chat_service import process_incoming_message, get_or_create_user, get_store_orders_by_email
+from src.services.chat_service import process_incoming_message, get_or_create_user, get_store_orders_by_email, log_chat_message
 from src.services.email_service import decode_email_token
 from src.services.voice_service import transcribe_audio
 from src.db.supabase_client import get_supabase_client
@@ -71,6 +71,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Ensure user record exists in Supabase users table
     db_user = get_or_create_user(telegram_id, display_name)
+    user_id = db_user.get("id", 0) if db_user else 0
     user_email = db_user.get("email") if db_user else None
 
     # Check for deep-linking payload (e.g., /start em_a2FrYWt1bmc1N0BnbWFpbC5jb20 or /start ORD-12345)
@@ -83,7 +84,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.info(f"🔗 Processing Telegram email token link for '{decoded_email}' by user {display_name} ({telegram_id})")
             
             # Save user with email in users table
-            get_or_create_user(telegram_id, display_name, email=decoded_email)
+            db_user = get_or_create_user(telegram_id, display_name, email=decoded_email)
+            user_id = db_user.get("id", 0) if db_user else user_id
             user_email = decoded_email
 
             # Fetch active store orders for this email
@@ -91,14 +93,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             if user_orders:
                 order_summaries = []
                 for o in user_orders:
+                    oid = o.get("order_id") or o.get("id")
                     items_str_list = []
-                    for item in o.get("items", []):
-                        p_name = (item.get("store_products") or {}).get("name", "Product")
-                        qty = item.get("quantity", 1)
-                        items_str_list.append(f"{p_name} (x{qty})")
+                    if o.get("items"):
+                        for item in o.get("items", []):
+                            p_name = (item.get("store_products") or {}).get("name") or item.get("product_name", "Product")
+                            qty = item.get("quantity", 1)
+                            items_str_list.append(f"{p_name} (x{qty})")
+                    elif o.get("product_name"):
+                        qty = o.get("quantity", 1)
+                        items_str_list.append(f"{o.get('product_name')} (x{qty})")
                     items_summary = ", ".join(items_str_list) if items_str_list else "Purchased Items"
                     order_summaries.append(
-                        f"📦 **Order #{o['id']}**\n"
+                        f"📦 **Order #{oid}**\n"
                         f"• **Status:** `{o.get('status', 'processing').title()}`\n"
                         f"• **Total:** `${float(o.get('total', 0)):.2f}`\n"
                         f"• **Items:** {items_summary}"
@@ -118,6 +125,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     "It looks like you're a new customer! What would you like to know about us? "
                     "Feel free to ask about our products, store policies, shipping options, or how to place an order!"
                 )
+
+            if user_id > 0:
+                log_chat_message(user_id, "user", f"/start {payload}")
+                log_chat_message(user_id, "assistant", verified_reply)
 
             await safe_reply_markdown(update, verified_reply)
             return
@@ -148,6 +159,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 f"📦 **Current Status:** `Processing`\n\n"
                 f"You can ask me anytime about your order status, shipping updates, or return policies!"
             )
+            if user_id > 0:
+                log_chat_message(user_id, "user", f"/start {payload}")
+                log_chat_message(user_id, "assistant", link_success_text)
+
             await safe_reply_markdown(update, link_success_text)
             return
 
@@ -162,6 +177,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"👋 Hello {display_name}! Welcome to ShopNest Customer Support Assistant.\n\n"
             "Please reply with your registered **email address** so I can retrieve your order details and assist you!"
         )
+    if user_id > 0:
+        log_chat_message(user_id, "user", "/start")
+        log_chat_message(user_id, "assistant", welcome_text)
+
     await safe_reply_markdown(update, welcome_text)
 
 
